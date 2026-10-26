@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#5a3b22">
+<title>ブロックハンター</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;900&display=swap">
+<style>
+/* ブロックハンター: 色ごとのアリの壺を送り出して、ドット絵を食べ尽くすパズル。
+   画面は幅540×高さ1060の論理座標を1枚のcanvasに描き、端末の画面に収まるように拡縮する。 */
+:root{
+  --bg:#3b2614; --paper:#f6ead2; --ink:#2b1d10;
+  --font-disp:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  color-scheme:light;
+}
+html,body{height:100%;margin:0;background:var(--bg);overflow:hidden}
+body{font-family:var(--font-disp);color:var(--paper);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none;-webkit-text-size-adjust:100%}
+#wrap{position:fixed;inset:0;overflow:hidden;background:var(--bg)}
+#game{position:absolute;left:0;top:0;width:540px;height:1060px;transform-origin:0 0;display:block;touch-action:none;cursor:pointer}
+#ov{position:absolute;left:0;top:0;width:540px;height:1060px;transform-origin:0 0;display:none;align-items:center;justify-content:center;background:rgba(30,18,8,.72)}
+#ov.on{display:flex}
+.card{width:420px;box-sizing:border-box;padding:30px 28px 26px;border-radius:26px;background:linear-gradient(#fff8e8,#f3e2c0);color:var(--ink);text-align:center;box-shadow:0 14px 0 #8a5a2b,0 24px 40px rgba(0,0,0,.45);border:4px solid #c08a4d}
+.card h1{margin:0 0 8px;font-size:44px;font-weight:900;letter-spacing:.02em;line-height:1.15}
+.card h2{margin:0 0 10px;font-size:34px;font-weight:900;line-height:1.2}
+.card p{margin:6px 0 0;font-size:19px;font-weight:700;line-height:1.5;color:#5a4330}
+.card .sub{font-size:16px;color:#7b6248}
+.btn{display:block;width:100%;box-sizing:border-box;margin-top:16px;padding:16px 10px;border:0;border-radius:18px;font-family:var(--font-disp);font-weight:900;font-size:26px;line-height:1;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.btn.go{background:linear-gradient(#ffb43a,#f08a12);box-shadow:0 6px 0 #a85a06;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.btn.sub{background:linear-gradient(#8fb4c9,#5f879e);box-shadow:0 6px 0 #37586b;font-size:21px;padding:13px 10px}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.ants{font-size:40px;line-height:1;margin-bottom:6px}
+.cps{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin-top:14px}
+.cpl{font-size:16px;font-weight:700;color:#7b6248}
+.cp{padding:10px 13px;border-radius:12px;border:2px solid #c08a4d;background:#fffaf0;color:#5a3b22;font-family:var(--font-disp);font-weight:900;font-size:17px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;box-shadow:0 3px 0 #c08a4d}
+.cp:active{transform:translateY(2px);box-shadow:0 1px 0 #c08a4d}
+.cp:focus-visible{outline:3px solid #f08a12;outline-offset:2px}
+.help{text-align:left;font-size:17px;line-height:1.55;margin:12px 0 0;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.55);color:#4a3523}
+.help b{color:#c2410c}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="540" height="1060"></canvas>
+  <div id="ov"><div class="card" id="card"></div></div>
+</div>
+<script>
+(() => {
+'use strict';
+const LW = 540, LH = 1060;              // 論理座標
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+const ov = document.getElementById('ov');
+const card = document.getElementById('card');
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+let scale = 1, offX = 0, offY = 0;
+
+function fit(){
+  const vw = window.innerWidth, vh = window.innerHeight;
+  scale = Math.min(vw / LW, vh / LH);
+  offX = Math.floor((vw - LW * scale) / 2);
+  offY = Math.floor((vh - LH * scale) / 2);
+  const tf = `translate(${offX}px,${offY}px) scale(${scale})`;
+  cv.style.transform = tf; ov.style.transform = tf;
+  cv.width = Math.round(LW * DPR); cv.height = Math.round(LH * DPR);
+  cv.style.width = LW + 'px'; cv.style.height = LH + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  boardDirty = true;
+}
+window.addEventListener('resize', fit);
+
+// ---------- 乱数（レベルごとに同じ並びを再現できるように seed 付き） ----------
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let rnd = Math.random;
+
+// ---------- 色（ビーズ風の明るい色。各色に名前を付けてアリの色にも使う） ----------
+const COL = {
+  red:'#e84a3f', dkred:'#b3262b', orange:'#f5902c', yellow:'#f8d13a', green:'#4ec95a', dkgreen:'#2f8f3e',
+  blue:'#3d8ef0', lblue:'#74d4f6', purple:'#9a5ce6', pink:'#f792b8', brown:'#8d5a2b', dkbrown:'#5c3317',
+  lbrown:'#d6a26a', tan:'#f2dcae', white:'#fbf8f1', black:'#3b3b3b', mint:'#7de8c9', salmon:'#ff8f5a', cream:'#fff0c2',
+  gray:'#a3a9b1', dkgray:'#626a74', navy:'#2c4f9e'
+};
+// 既存の色と見分けがつく「同系の別の濃さ」を1つ返す（明るい色は暗く、暗い色は明るく。近すぎる候補は飛ばす）
+function variantColor(hex, used){
+  const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+  const dist = (a, b) => { const p = rgb(a), q = rgb(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+  const [r, g, b] = rgb(hex); const lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
+  const ks = lum > 0.55 ? [0.74, 0.6, 1.3, 0.48] : [1.45, 1.75, 0.6, 2.1];
+  for (const k of ks){ const c = shade(hex, k); if (used.every(u => dist(u, c) >= 52)) return c; }
+  return null;
+}
+function shade(hex, k){ // k<1 で暗く、>1 で明るく
+  const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = v => Math.max(0, Math.min(255, Math.round(k >= 1 ? v + (255 - v) * (k - 1) : v * k)));
+  return '#' + ((f(r) << 16) | (f(g) << 8) | f(b)).toString(16).padStart(6, '0');
+}
+
+// ---------- ドット絵の描画（デザイン座標 → セルに塗る） ----------
+// 形は順番に塗り重ねる（後のものが上）。色 0 は消しゴム。
+function Pic(){ this.sh = []; this.post = []; }
+Pic.prototype = {
+  c(x, y, r, col){ this.sh.push({ t: 'c', x, y, r, col }); return this; },
+  e(x, y, rx, ry, col){ this.sh.push({ t: 'e', x, y, rx, ry, col }); return this; },
+  r(x0, y0, x1, y1, col){ this.sh.push({ t: 'r', x0, y0, x1, y1, col }); return this; },
+  p(pts, col){ this.sh.push({ t: 'p', pts, col }); return this; },
+  l(x0, y0, x1, y1, w, col){ this.sh.push({ t: 'l', x0, y0, x1, y1, w, col }); return this; },
+  seeds(col, sx, sy, ox, oy, onlyCol){ this.post.push({ t: 'seeds', col, sx, sy, ox, oy, onlyCol }); return this; },
+  hit(s, x, y){
+    switch (s.t){
+      case 'c': { const dx = x - s.x, dy = y - s.y; return dx * dx + dy * dy <= s.r * s.r; }
+      case 'e': { const dx = (x - s.x) / s.rx, dy = (y - s.y) / s.ry; return dx * dx + dy * dy <= 1; }
+      case 'r': return x >= s.x0 && x <= s.x1 && y >= s.y0 && y <= s.y1;
+      case 'l': { const dx = s.x1 - s.x0, dy = s.y1 - s.y0, L = dx * dx + dy * dy || 1;
+        let t = ((x - s.x0) * dx + (y - s.y0) * dy) / L; t = Math.max(0, Math.min(1, t));
+        const px = s.x0 + t * dx - x, py = s.y0 + t * dy - y; return px * px + py * py <= s.w * s.w / 4; }
+      case 'p': { const p = s.pts; let inside = false;
+        for (let i = 0, j = p.length - 1; i < p.length; j = i++){
+          const xi = p[i][0], yi = p[i][1], xj = p[j][0], yj = p[j][1];
+          if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) inside = !inside;
+        } return inside; }
+    } return false;
+  },
+  // bw×bh のデザイン座標を k 倍のセル数に描く
+  raster(bw, bh, k){
+    const W = Math.round(bw * k), H = Math.round(bh * k), g = new Array(W * H).fill(0);
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){
+      const x = (c + 0.5) / k, y = (r + 0.5) / k; let col = 0;
+      for (const s of this.sh) if (this.hit(s, x, y)) col = s.col;
+      g[r * W + c] = col;
+    }
+    for (const q of this.post){
+      if (q.t === 'seeds'){
+        for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){
+          const x = (c + 0.5) / k, y = (r + 0.5) / k, i = r * W + c;
+          if (!g[i] || (q.onlyCol && g[i] !== q.onlyCol)) continue;
+          const u = (x - q.ox) / q.sx, v = (y - q.oy) / q.sy;
+          const fu = u - Math.round(u), fv = v - Math.round(v);
+          if (Math.abs(fu) * q.sx * k < 0.5 && Math.abs(fv) * q.sy * k < 0.5) g[i] = q.col;
+        }
+      }
+    }
+    return { W, H, g };
+  }
+};
+
+// ---------- 食べ物13種（デザインは幅 bw・高さ bh の座標系） ----------
+const FOODS = [
+  { name:'おにぎり', bw:22, bh:20, draw(P){
+    P.p([[11,1.5],[21.5,18.5],[0.5,18.5]], COL.white).c(11,4.5,3,COL.white)
+     .r(6.5,12,15.5,18.5,COL.black).c(11,8.5,2,COL.red);
+  }},
+  { name:'りんご', bw:22, bh:22, draw(P){
+    P.c(11.6,12.6,8.6,COL.dkred).c(10.6,11.6,8.2,COL.red).e(7.2,8.6,1.7,2.4,COL.pink)
+     .r(10.4,2,11.7,5.2,COL.brown).e(14.2,4.2,3.2,1.5,COL.green);
+  }},
+  { name:'たこ焼き', bw:24, bh:20, draw(P){
+    P.p([[1.5,12.5],[22.5,12.5],[20.5,18.5],[3.5,18.5]], COL.tan);
+    for (const x of [6, 12, 18]){ P.c(x, 10, 4.2, COL.brown).e(x, 8.6, 3.4, 2.1, COL.dkbrown).e(x - 1.2, 8, 1.1, 0.8, COL.white); }
+    P.l(2.5,10.5,21.5,10.5,0.9,COL.white);
+    for (const x of [4, 8.5, 13.5, 17, 21]) P.c(x, 7.2, 0.7, COL.green);
+    for (const x of [6.5, 11, 15.5, 19.5]) P.c(x, 11.8, 0.7, COL.pink);
+  }},
+  { name:'スイカ', bw:24, bh:20, draw(P){
+    P.c(12,19.5,11.6,COL.dkgreen).c(12,19.5,10.8,COL.green).c(12,19.5,9.6,COL.white).c(12,19.5,8.6,COL.red);
+    for (const [x,y] of [[8,15],[12,12],[16,15],[10,17],[14,17],[12,15.5],[7.5,17.8],[16.5,17.8]]) P.e(x, y, 0.7, 1.1, COL.black);
+  }},
+  { name:'ドーナツ', bw:22, bh:22, draw(P){
+    P.c(11,11.5,10.2,COL.lbrown).c(11,10.6,9.4,COL.pink).c(11,11,3.4,0);
+    const sp = [[5,6,COL.white],[9,4,COL.yellow],[15,5,COL.white],[17,10,COL.yellow],[4,13,COL.yellow],[16,16,COL.white],[8,17,COL.yellow],[13,3,COL.white]];
+    for (const [x,y,c] of sp) P.l(x, y, x + 1.6, y + 0.8, 0.9, c);
+  }},
+  { name:'ハンバーガー', bw:24, bh:22, draw(P){
+    P.e(12,8,11,6.2,COL.lbrown).r(1,8,23,10.5,COL.lbrown)
+     .c(6,5.5,0.7,COL.white).c(10,3.5,0.7,COL.white).c(15,4,0.7,COL.white).c(19,6.5,0.7,COL.white);
+    for (let x = 0.5; x <= 24; x += 3) P.c(x, 11, 1.6, COL.green);
+    P.r(0.5,10.2,23.5,11.4,COL.green).r(1.5,11.8,22.5,13.2,COL.red).r(1,13.2,23,14.5,COL.yellow)
+     .r(1.5,14.5,22.5,17,COL.brown).r(1,17,23,20,COL.lbrown).c(2.5,18.5,1.5,COL.lbrown).c(21.5,18.5,1.5,COL.lbrown);
+  }},
+  { name:'いちご', bw:22, bh:24, draw(P){
+    P.c(12,10,8.3,COL.dkred).p([[4.3,12],[20.3,12],[12,23]], COL.dkred)
+     .c(10.8,9.2,8,COL.red).p([[3.2,11],[18.8,11],[10.8,22]], COL.red)
+     .seeds(COL.yellow, 3, 3, 1.5, 1.5, COL.red)
+     .e(11,3.2,6.5,2.2,COL.dkgreen).p([[5,3],[8,8],[11,3]], COL.green).p([[11,3],[14,8],[17,3]], COL.green).r(10.3,0.5,11.7,3,COL.dkgreen);
+  }},
+  { name:'おすし', bw:26, bh:20, draw(P){
+    P.e(13,14,11.5,5,COL.white).r(1.5,12,24.5,16.5,COL.white).c(3,14.5,2,COL.white).c(23,14.5,2,COL.white)
+     .e(13.5,9.6,12.3,5,COL.salmon).e(12.5,8.8,11.8,4.6,COL.orange)
+     .l(6,5.5,8.5,12,0.9,COL.white).l(12,4.5,14.5,12.5,0.9,COL.white).l(18,5,20,11.5,0.9,COL.white)
+     .r(11,4,15,17,COL.black);
+  }},
+  { name:'プリン', bw:22, bh:22, draw(P){
+    P.e(11,20,10.5,1.8,COL.lblue).p([[4,8],[18,8],[20,19],[2,19]], COL.yellow)
+     .r(3.8,6.5,18.2,10,COL.brown).e(11,6.5,7.2,1.6,COL.brown).c(6,11,1.4,COL.brown).c(15,11.5,1.6,COL.brown).c(10.5,10.8,1.2,COL.brown)
+     .c(11,5,2.8,COL.white).c(11,2.4,1.5,COL.red);
+  }},
+  { name:'アイス', bw:22, bh:26, draw(P){
+    P.p([[3.5,12.5],[18.5,12.5],[11,25.5]], COL.lbrown).seeds(COL.dkbrown, 2.6, 2.6, 11, 14, COL.lbrown)
+     .c(11,9.5,6,COL.pink).c(6.8,6.8,4.6,COL.mint).c(15.2,6.8,4.6,COL.brown).c(11,3.2,1.6,COL.red);
+  }},
+  { name:'ピザ', bw:26, bh:24, draw(P){
+    P.p([[13,1.5],[25.5,22.5],[0.5,22.5]], COL.lbrown).p([[13,5.5],[22.8,21.2],[3.2,21.2]], COL.yellow)
+     .c(13,9,2,COL.red).c(9,16,2.1,COL.red).c(17,16,2.1,COL.red).c(13,19,1.6,COL.red)
+     .c(13,9,0.8,COL.black).c(9,16,0.8,COL.black).c(17,16,0.8,COL.black)
+     .e(13,14,1.8,1.1,COL.green).e(7,19.5,1.6,1,COL.green).e(19,19.5,1.6,1,COL.green);
+  }},
+  { name:'ケーキ', bw:24, bh:22, draw(P){
+    P.e(12,20,12,2,COL.lblue).r(2,10,22,19.5,COL.yellow).r(2,13.5,22,15.5,COL.pink).r(2,7.5,22,10,COL.white)
+     .c(5,7,2,COL.white).c(12,7,2,COL.white).c(19,7,2,COL.white).c(12,3.6,2.6,COL.red).e(12,3,1.2,0.8,COL.green)
+     .c(6,12,1.1,COL.red).c(18,12,1.1,COL.red).c(12,17.5,1.1,COL.red);
+  }},
+  { name:'ラーメン', bw:28, bh:24, draw(P){
+    P.c(14,8,13,COL.white).r(-1,-1,29,8,0).r(3.5,14,24.5,15.3,COL.red).r(8.5,20.4,19.5,22.5,COL.red)
+     .e(14,8,13.3,4.3,COL.red).e(14,8,11.6,3.3,COL.orange);
+    for (let x = 4; x <= 24; x += 2.6) P.c(x, 8.2 + (x % 5.2 ? 0.7 : -0.5), 0.8, COL.yellow);
+    P.e(14,9.8,3.2,1.6,COL.brown).c(8.5,8,2.4,COL.white).c(8.5,8,1.2,COL.yellow).c(19.5,7.6,2.4,COL.white).c(19.5,7.6,1.1,COL.pink)
+     .r(12,4.2,16,7.6,COL.black).c(23,9.5,0.9,COL.green).c(5,10,0.9,COL.green);
+  }}
+];
+// ---------- 乗り物6種 ----------
+const VEHICLES = [
+  { name:'くるま', bw:26, bh:16, draw(P){
+    P.p([[6,8.5],[9,3],[18,3],[21,8.5]], COL.red).r(1,8,25,13,COL.red).c(2.5,11,2.5,COL.red).c(23.5,11,2.5,COL.red)
+     .p([[7.5,8],[9.8,4.2],[13,4.2],[13,8]], COL.lblue).p([[14.2,4.2],[17.4,4.2],[19.8,8],[14.2,8]], COL.lblue)
+     .r(1,12.2,25,13.2,COL.dkred).c(24.3,10,1,COL.yellow).c(1.7,10,0.9,COL.orange)
+     .c(7,13,2.9,COL.black).c(19,13,2.9,COL.black).c(7,13,1.3,COL.gray).c(19,13,1.3,COL.gray);
+  }},
+  { name:'バス', bw:28, bh:16, draw(P){
+    P.r(1,3,27,13,COL.yellow).c(2.5,4.5,1.5,COL.yellow).c(25.5,4.5,1.5,COL.yellow).r(1,9.5,27,10.6,COL.red);
+    for (const x of [3, 8, 13]) P.r(x, 5, x + 4, 8.5, COL.lblue);
+    P.r(19,5,22,12,COL.lblue).r(23,5,26,8.5,COL.lblue).c(26.3,11.5,0.8,COL.white).c(1.7,11.5,0.8,COL.orange)
+     .c(7,13,2.6,COL.black).c(21,13,2.6,COL.black).c(7,13,1.1,COL.gray).c(21,13,1.1,COL.gray);
+  }},
+  { name:'しんかんせん', bw:30, bh:14, draw(P){
+    P.r(4,4,29,11,COL.white).e(4,7.5,3.5,3.5,COL.white).r(2,8,29,9.2,COL.blue).r(4,11,29,12.6,COL.dkgray).c(1.6,9.8,0.8,COL.yellow);
+    for (let x = 8; x <= 27; x += 3) P.r(x, 5.3, x + 1.6, 7, COL.navy);
+    for (const x of [8, 14, 20, 26]) P.c(x, 12.6, 1.2, COL.black);
+  }},
+  { name:'ひこうき', bw:28, bh:18, draw(P){
+    P.p([[10,9.5],[16,9.5],[14,16.5],[8.5,16.5]], COL.blue).p([[10,9.5],[16,9.5],[13,2.5],[8.5,2.5]], COL.blue)
+     .p([[21,9],[24,2.5],[27,2.5],[25,9]], COL.red).e(14,10,12.5,3.2,COL.white).r(3,10.8,24,11.6,COL.red).e(25.5,9.3,1.6,1,COL.lblue);
+    for (let x = 6; x <= 20; x += 2.5) P.c(x, 9, 0.7, COL.lblue);
+    P.e(12,13.5,2.5,1.2,COL.gray);
+  }},
+  { name:'ロケット', bw:16, bh:26, draw(P){
+    P.p([[5,15],[1.5,22.5],[5,22.5]], COL.red).p([[11,15],[14.5,22.5],[11,22.5]], COL.red)
+     .p([[5,20],[11,20],[8,25.5]], COL.orange).p([[6.5,20],[9.5,20],[8,23.5]], COL.yellow)
+     .r(5,7,11,20,COL.white).p([[5,7.2],[8,1],[11,7.2]], COL.red).r(5,16.5,11,18,COL.red)
+     .c(8,11.5,2.2,COL.blue).c(8,11.5,1.4,COL.lblue);
+  }},
+  { name:'ヨット', bw:24, bh:22, draw(P){
+    P.p([[2,16],[22,16],[19,20],[5,20]], COL.brown).r(11.5,2,12.6,16,COL.black)
+     .p([[12.6,3],[21,15],[12.6,15]], COL.white).p([[11.5,5],[4,15],[11.5,15]], COL.red).r(0,20,24,22,COL.blue);
+    for (let x = 1; x < 24; x += 4) P.e(x + 1, 20.3, 1.6, 0.6, COL.lblue);
+  }}
+];
+// ---------- 道具6種 ----------
+const TOOLS = [
+  { name:'ハンマー', bw:20, bh:22, draw(P){
+    P.r(3,3,17,8.5,COL.gray).c(3,5.75,2.75,COL.gray).c(17,5.75,2.75,COL.gray).r(3,7,17,8.5,COL.dkgray)
+     .r(8.8,8.5,11.2,21,COL.brown).r(8.8,16,11.2,21,COL.black);
+  }},
+  { name:'はさみ', bw:22, bh:24, draw(P){
+    P.p([[5.5,1],[9,1],[13,13],[11,14.5]], COL.gray).p([[16.5,1],[13,1],[9,13],[11,14.5]], COL.gray)
+     .c(7,19,4.3,COL.red).c(7,19,2.2,0).c(15,19,4.3,COL.red).c(15,19,2.2,0).c(11,13.8,1.3,COL.black);
+  }},
+  { name:'えんぴつ', bw:26, bh:10, draw(P){
+    P.r(6,2.5,21,7.5,COL.yellow).r(6,2.5,21,3.6,COL.orange).r(21,2.5,23,7.5,COL.gray).r(23,2.5,25.5,7.5,COL.pink)
+     .p([[6,2.5],[1,5],[6,7.5]], COL.tan).p([[3,4],[1,5],[3,6]], COL.black);
+  }},
+  { name:'スパナ', bw:24, bh:10, draw(P){
+    P.r(6,3.8,18,6.2,COL.gray).c(5,5,4,COL.gray).r(-1,4,4.2,6,0).c(19,5,4,COL.gray).r(19.8,4,25,6,0)
+     .r(6,5.4,18,6.2,COL.dkgray).r(9,3.8,15,6.2,COL.red);
+  }},
+  { name:'のこぎり', bw:26, bh:12, draw(P){
+    const pts = [[5,2],[25,2],[25,6.5]]; for (let x = 24; x >= 5; x -= 2){ pts.push([x, 7.5]); pts.push([x - 1, 9.5]); }
+    P.p(pts, COL.gray).p([[0.5,1],[5.5,1],[5.5,11],[0.5,11]], COL.brown).c(3,6,1.4,0).r(5.5,2,7,9.5,COL.dkgray);
+  }},
+  { name:'バケツ', bw:20, bh:20, draw(P){
+    P.l(3,6.5,10,0.8,1,COL.black).l(10,0.8,17,6.5,1,COL.black).p([[3,6],[17,6],[15,19],[5,19]], COL.blue)
+     .r(2.5,5,17.5,7.5,COL.navy).e(10,6.2,6.6,1.1,COL.lblue);
+  }}
+];
+// ---------- 家電10種 ----------
+const APPLIANCES = [
+  { name:'テレビ', bw:28, bh:20, draw(P){
+    P.r(1,1,27,16,COL.black).r(2.5,2.5,25.5,14.5,COL.lblue).c(20,6,2.2,COL.yellow)
+     .p([[2.5,11],[9,7.5],[15,12],[21,8.5],[25.5,10.5],[25.5,14.5],[2.5,14.5]], COL.green)
+     .r(12,16,16,18,COL.dkgray).r(8,18,20,19.5,COL.dkgray);
+  }},
+  { name:'ドラム式せんたくき', bw:20, bh:24, draw(P){
+    P.r(1,1,19,23,COL.white).r(1,1,19,5,COL.gray).c(4,3,1,COL.black).c(15.5,3,1.3,COL.blue).r(7,2.3,12,3.7,COL.dkgray)
+     .c(10,14,7.6,COL.gray).c(10,14,6,COL.navy).c(10,14,4.2,COL.blue).c(8,12,1,COL.white).c(12,15.5,0.7,COL.white).c(11.5,11.5,0.5,COL.white);
+  }},
+  { name:'れいぞうこ', bw:18, bh:26, draw(P){
+    P.r(1,1,17,25,COL.gray).r(2.2,2.2,15.8,8.2,COL.white).r(2.2,10.2,15.8,16.2,COL.white).r(2.2,18.2,15.8,23,COL.white).r(1,24,17,25,COL.dkgray)
+     .r(13,3,14.3,7.5,COL.dkgray).r(13,11,14.3,16,COL.dkgray).r(13,19,14.3,22.5,COL.dkgray).c(5,4.5,1.1,COL.red).r(4,12,8,15.5,COL.yellow);
+  }},
+  { name:'エアコン', bw:28, bh:12, draw(P){
+    P.r(1,2,27,9.6,COL.gray).c(2.5,8,1.6,COL.gray).c(25.5,8,1.6,COL.gray).r(2,3,26,7,COL.white).r(2.5,7,25.5,8,COL.lblue).r(2.5,8.5,25.5,9.6,COL.dkgray).c(24,4.8,0.8,COL.green)
+     .l(6,10.3,4.5,11.8,0.9,COL.lblue).l(14,10.3,14,11.8,0.9,COL.lblue).l(22,10.3,23.5,11.8,0.9,COL.lblue);
+  }},
+  { name:'すいはんき', bw:20, bh:18, draw(P){
+    P.e(10,10.5,9,6.5,COL.gray).r(1,10.5,19,16.5,COL.gray).c(3,14,2,COL.gray).c(17,14,2,COL.gray)
+     .e(10,10.5,7.8,5.3,COL.white).r(2.2,10.5,17.8,15.3,COL.white).r(1,15.6,19,16.5,COL.dkgray)
+     .e(10,6,8.6,4.2,COL.gray).r(7,1.5,13,3.6,COL.dkgray).r(5.5,12,14.5,15,COL.black).c(8,13.5,0.8,COL.red).r(10.5,12.8,13.5,14.2,COL.green);
+  }},
+  { name:'ロボットそうじき', bw:22, bh:22, draw(P){
+    P.c(11,11,10.3,COL.black).c(11,11,9.2,COL.dkgray).c(11,11,6.6,COL.gray).c(11,7.5,1.3,COL.white).c(11,11.5,2.3,COL.blue).c(11,11.5,1.1,COL.navy);
+  }},
+  { name:'せんぷうき', bw:20, bh:26, draw(P){
+    P.c(10,9,8.6,COL.dkgray).c(10,9,7.6,COL.lblue).e(10,5,2.3,3.4,COL.white).e(6.4,11.2,3.4,2.3,COL.white).e(13.6,11.2,3.4,2.3,COL.white)
+     .c(10,9,1.7,COL.gray).r(9,17.2,11,21.5,COL.gray).e(10,23,7,2.2,COL.dkgray);
+  }},
+  { name:'ドライヤー', bw:24, bh:18, draw(P){
+    P.r(6,4,21,11,COL.pink).c(6,7.5,3.5,COL.dkgray).c(6,7.5,2.3,COL.gray).r(21,5.2,24,9.8,COL.gray)
+     .p([[9,11],[15,11],[13,17.5],[7,17.5]], COL.pink).r(10.8,12,13.2,14.2,COL.black).e(13,5.8,3.5,0.9,COL.white);
+  }},
+  { name:'でんしレンジ', bw:26, bh:18, draw(P){
+    P.r(1,1,25,17,COL.gray).r(3,3,17,15,COL.black).r(4.5,4.5,15.5,13.5,COL.dkgray).r(19,3,23,15,COL.white)
+     .r(19.5,4,22.5,6.2,COL.green).c(21,9,1.2,COL.blue).c(21,12.5,1.2,COL.black);
+  }},
+  { name:'セラミックファンヒーター', bw:18, bh:22, draw(P){
+    P.r(2,2,16,20,COL.gray).r(3.2,3.2,14.8,18.8,COL.white).r(4,3.8,14,5.4,COL.gray).r(4,6.5,14,16,COL.dkgray);
+    for (const y of [7.4, 9.8, 12.2, 14.6]) P.r(5, y, 13, y + 1, COL.orange);
+    P.c(9,18,1.3,COL.black).r(2,20,5,21.5,COL.dkgray).r(13,20,16,21.5,COL.dkgray);
+  }}
+];
+// ---------- 名画風7種（四角いっぱいに塗る＝外周からしか食べられない） ----------
+const PAINTINGS = [
+  { name:'モンドリアン風', bw:24, bh:24, draw(P){
+    P.r(0,0,24,24,COL.white).r(9.2,0,24,8,COL.red).r(0,18.2,8,24,COL.blue).r(18.2,18.2,24,24,COL.yellow)
+     .r(0,8,24,9.2,COL.black).r(0,17,24,18.2,COL.black).r(8,0,9.2,24,COL.black).r(17,0,18.2,24,COL.black);
+  }},
+  { name:'星月夜風', bw:28, bh:20, draw(P){
+    P.r(0,0,28,20,COL.navy).l(2,5,8,3,1.3,COL.lblue).l(8,3,14,6,1.3,COL.lblue).l(14,6,20,3,1.3,COL.lblue).l(20,3,26,6,1.3,COL.lblue).l(10,9,18,10,1.1,COL.lblue)
+     .c(24,3.5,2.5,COL.yellow).c(4,3,1.1,COL.yellow).c(10,8,1,COL.yellow).c(17,1.8,1,COL.yellow).c(22,9.5,1,COL.yellow).c(8,11.5,0.9,COL.yellow)
+     .r(0,14,28,20,COL.dkgreen).p([[2,20],[4.5,5],[7,20]], COL.black)
+     .r(10,15,14,19,COL.black).r(16,16,19,19,COL.black).r(21,15.5,24,19,COL.black).p([[17.5,11],[16.5,16],[18.5,16]], COL.black)
+     .r(11,16,12,17,COL.yellow).r(17,17,18,18,COL.yellow).r(22,16.5,23,17.5,COL.yellow);
+  }},
+  { name:'大波の絵（神奈川沖浪裏風）', bw:28, bh:20, draw(P){
+    P.r(0,0,28,20,COL.cream).p([[17,14],[20,10],[23,14]], COL.white).r(16,13,24,14.5,COL.gray)
+     .p([[0,20],[0,8],[4,5],[9,3],[14,2],[17,5],[16,8],[20,7],[24,9],[22,12],[28,13],[28,20]], COL.navy)
+     .p([[2,20],[3,10],[8,7],[13,6],[14,9],[10,12],[16,13],[20,11],[26,15],[26,20]], COL.blue)
+     .c(14,2.5,1.5,COL.white).c(11,3.6,1.2,COL.white).c(17,4.6,1.1,COL.white).c(8,5.2,1,COL.white).c(5,7.2,1,COL.white).c(20,7.5,1,COL.white).c(24,9.5,0.9,COL.white)
+     .l(4,9,2,14,0.8,COL.white).l(12,8,9,12,0.8,COL.white);
+  }},
+  { name:'叫び風', bw:20, bh:26, draw(P){
+    P.r(0,0,20,8,COL.orange).r(0,1.5,20,3,COL.red).r(0,5,20,6.2,COL.yellow).r(0,8,20,16,COL.navy).r(0,10,20,11,COL.blue).r(0,13.5,20,14.5,COL.blue)
+     .p([[0,19],[20,12],[20,15],[0,23]], COL.brown).p([[0,23],[20,15],[20,26],[0,26]], COL.tan).l(0,17.5,20,10.5,1,COL.dkbrown)
+     .p([[6,26],[7,17],[11,17],[12,26]], COL.black).e(9,15,2.2,3,COL.tan).e(9,16.3,0.8,1.1,COL.black).c(6.3,14.2,1,COL.tan).c(11.7,14.2,1,COL.tan)
+     .c(8.2,14.2,0.4,COL.black).c(9.8,14.2,0.4,COL.black);
+  }},
+  { name:'モナ・リザ風', bw:18, bh:24, draw(P){
+    P.r(0,0,18,24,COL.yellow).r(1.5,1.5,16.5,22.5,COL.dkgreen).r(1.5,1.5,16.5,8,COL.lblue)
+     .e(9,8,4.8,5,COL.black).e(9,9.2,3.3,4.2,COL.tan).p([[7,13],[11,13],[12.5,16],[5.5,16]], COL.tan)
+     .r(2.5,15.5,15.5,22.5,COL.dkbrown).e(9,21,4.2,1.5,COL.tan).c(7.6,8.6,0.4,COL.black).c(10.4,8.6,0.4,COL.black).e(9,11.2,0.9,0.4,COL.red);
+  }},
+  { name:'ひまわり風', bw:20, bh:26, draw(P){
+    P.r(0,0,20,26,COL.cream).r(0,20,20,26,COL.tan).p([[6,20],[14,20],[13.5,13],[6.5,13]], COL.yellow).r(6.4,16.5,13.6,17.5,COL.dkbrown);
+    const fl = [[5,6],[10,4],[15,7],[8,10],[13,11]];
+    for (const [x,y] of fl) P.l(x, y, 10, 13.5, 0.8, COL.green);
+    for (const [x,y] of fl) P.c(x, y, 2.9, COL.orange).c(x, y, 2.1, COL.yellow).c(x, y, 1.3, COL.brown);
+  }},
+  { name:'真珠の耳飾りの少女風', bw:18, bh:24, draw(P){
+    P.r(0,0,18,24,COL.black).p([[12,4],[16.5,2],[17,14],[13,10]], COL.yellow).p([[3,24],[6,14],[12,14],[16,24]], COL.brown)
+     .e(9,10.5,3.7,4.7,COL.tan).e(9,5.3,5,3.8,COL.blue).r(4.5,5,13.5,7,COL.blue).c(12,13.8,0.95,COL.white)
+     .c(7.6,10,0.45,COL.black).c(10.4,10,0.45,COL.black).e(9,13,1,0.5,COL.red);
+  }}
+];
+// 出す順: 名画以外の35種は「基準サイズでのブロック数が少ない順」（1周に同じ絵は1回）。
+// 名画（大きくて手ごわい）は10面から42面まで等間隔に散らす（10・15・21・26・31・37・42面＝連続しない）
+const PICS = (() => {
+  const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS].map(p => { const P = new Pic(); p.draw(P); return { p, n: P.raster(p.bw, p.bh, 1).g.filter(v => v).length }; });
+  base.sort((a, b) => a.n - b.n);
+  const total = base.length + PAINTINGS.length, first = 10, last = total;
+  const at = new Set(PAINTINGS.map((p, i) => first + Math.round(i * (last - first) / (PAINTINGS.length - 1))));
+  const out = []; let pi = 0, bi = 0; for (let lv = 1; lv <= total; lv++) out.push(at.has(lv) ? PAINTINGS[pi++] : base[bi++].p); return out; })();
+// ---------- レベル生成 ----------
+const NCOL = 5, NSLOT = 5;
+const MAXDIM = 36;
+function levelSpec(lv){
+  const idx = (lv - 1) % PICS.length, cyc = Math.floor((lv - 1) / PICS.length);
+  const food = PICS[idx];
+  // 1周目は基準サイズ（＝ブロック数が少ない順がそのまま成り立つ）、同じ絵が2回目以降に出るときは1.5倍（最大36マスで頭打ち＝3周目は2周目と同じ）
+  let k = cyc >= 1 ? 1.5 : 1;
+  k = Math.min(k, MAXDIM / Math.max(food.bw, food.bh));
+  const noise = Math.max(0, Math.min(0.05, (lv - 4) * 0.0025));         // 5面目からまだら
+  const shuffle = Math.min(7, 1 + Math.floor((lv - 1) / 4));            // 山札の混ぜ具合
+  const chunk = 22 + Math.min(18, lv * 0.6);                              // 壺1つの平均アリ数
+  return { food, k, noise, shuffle, chunk };
+}
+
+// 外（リング）から届く範囲を測る。sx: スタート列（下のリングのどのセルから入るか）。
+// 戻り値 dist は (W+2)×(H+2) のリング込み座標で、通れるセル（空き・リング）だけに距離が入る。
+function field(grid, W, H, sx){
+  const GW = W + 2, GH = H + 2, N = GW * GH;
+  const dist = new Float32Array(N).fill(Infinity), par = new Int32Array(N).fill(-1);
+  const pass = i => { const c = i % GW - 1, r = Math.floor(i / GW) - 1; return c < 0 || r < 0 || c >= W || r >= H || grid[r * W + c] === 0; };
+  // 簡易ダイクストラ（コストは整数なのでバケット）
+  const start = (H + 1) * GW + (sx + 1); dist[start] = 0;
+  const q = [start]; let qi = 0;
+  while (qi < q.length){
+    const i = q[qi++]; const d = dist[i];
+    const c = i % GW, r = Math.floor(i / GW);
+    const nb = [];
+    if (c > 0) nb.push(i - 1); if (c < GW - 1) nb.push(i + 1); if (r > 0) nb.push(i - GW); if (r < GH - 1) nb.push(i + GW);
+    for (const j of nb){ if (!pass(j)) continue; if (dist[j] > d + 1){ dist[j] = d + 1; par[j] = i; q.push(j); } }
+  }
+  return { dist, par, GW, GH };
+}
+// ブロック (c,r) に届くか: 隣に距離つきの通れるセルがあるか。届くなら [距離, 隣のリング座標index]
+function reach(F, grid, W, H, c, r){
+  const GW = F.GW; let best = Infinity, bi = -1;
+  const i = (r + 1) * GW + (c + 1);
+  for (const j of [i - 1, i + 1, i - GW, i + GW]){ const d = F.dist[j]; if (d < best){ best = d; bi = j; } }
+  return bi < 0 ? null : [best + 1, bi];
+}
+
+// 外側から1層ずつはがす順（色ごとの出てくる順番 → 山札の並びの基準にする）
+function peelOrder(grid, W, H){
+  const g = grid.slice(); const layer = new Int16Array(W * H).fill(-1); let L = 0, left = g.filter(v => v).length;
+  while (left > 0){
+    const F = field(g, W, H, Math.floor(W / 2)); const rm = [];
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (g[r * W + c] && reach(F, g, W, H, c, r)) rm.push(r * W + c);
+    if (!rm.length) break;
+    for (const i of rm){ layer[i] = L; g[i] = 0; } left -= rm.length; L++;
+  }
+  return layer;
+}
+
+// 山札を作る: 色ごとの総数を壺に分け、はがれる順に並べて5列に配る
+function buildStacks(grid, W, H, spec, R){
+  const layer = peelOrder(grid, W, H);
+  const byCol = {};
+  for (let i = 0; i < W * H; i++) if (grid[i]){ (byCol[grid[i]] = byCol[grid[i]] || []).push(layer[i]); }
+  const tiles = [];
+  for (const col in byCol){
+    const ls = byCol[col].sort((a, b) => a - b); const T = ls.length;
+    let n = Math.max(1, Math.round(T / spec.chunk)); if (T >= 10 && n === 1 && R() < 0.5) n = 2;
+    // ランダムな分割（最小5、合計Tぴったり）
+    const cuts = []; let rest = T;
+    for (let j = 0; j < n; j++){
+      const remain = n - j - 1; let size;
+      if (remain === 0) size = rest; else { const avg = rest / (remain + 1); size = Math.max(Math.min(5, rest - 5 * remain), Math.round(avg * (0.6 + 0.8 * R()))); size = Math.min(size, rest - 5 * remain); }
+      cuts.push(size); rest -= size;
+    }
+    let at = 0;
+    for (const size of cuts){ const key = ls[Math.min(T - 1, at + Math.floor(size * 0.4))] + R() * 0.9; tiles.push({ col, n: size, key }); at += size; }
+  }
+  tiles.sort((a, b) => a.key - b.key);
+  // 近い順位どうしを混ぜる（spec.shuffle が大きいほど遠くまで入れ替わる）
+  for (let i = tiles.length - 1; i > 0; i--){ const j = Math.max(0, i - Math.floor(R() * (spec.shuffle + 1))); const t = tiles[i]; tiles[i] = tiles[j]; tiles[j] = t; }
+  const stacks = Array.from({ length: NCOL }, () => []);
+  tiles.forEach((t, i) => stacks[i % NCOL].push({ col: t.col, n: t.n }));
+  return stacks;
+}
+
+// ふつうに遊んで解けるかの簡易チェック（届く色を優先して送る）
+function solvable(grid, W, H, stacks0){
+  const g = grid.slice(); const st = stacks0.map(s => s.map(t => ({ col: t.col, n: t.n })));
+  let slots = []; let left = g.filter(v => v).length; let guard = 0;
+  const reachable = col => { const F = field(g, W, H, Math.floor(W / 2)); const out = [];
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (g[i] === col && reach(F, g, W, H, c, r)) out.push(i); } return out; };
+  while (left > 0 && guard++ < 5000){
+    let moved = true;
+    while (moved){ moved = false;
+      for (const s of slots){ if (s.n <= 0) continue; const rs = reachable(s.col); if (!rs.length) continue;
+        const take = Math.min(s.n, rs.length); for (let j = 0; j < take; j++) g[rs[j]] = 0; s.n -= take; left -= take; moved = true; }
+      slots = slots.filter(s => s.n > 0);
+    }
+    if (left <= 0) return true;
+    // 送る壺を選ぶ: 届くブロックが多い色の山札トップ
+    let best = -1, bestV = -1;
+    for (let i = 0; i < NCOL; i++){ const t = st[i][0]; if (!t) continue; const v = reachable(t.col).length; if (v > bestV){ bestV = v; best = i; } }
+    if (best < 0) return false;
+    if (bestV === 0){ // 届く色が無い: 空き枠があれば次の壺が届く色の列を1つ退かす
+      if (slots.length >= NSLOT) return false;
+      let alt = -1; for (let i = 0; i < NCOL; i++){ const u = st[i][1]; if (u && reachable(u.col).length > 0){ alt = i; break; } }
+      best = alt >= 0 ? alt : best;
+    }
+    if (slots.length >= NSLOT) return false;
+    slots.push(st[best].shift());
+  }
+  return left <= 0;
+}
+
+function makeLevel(lv, seed){
+  const spec = levelSpec(lv); const R = mulberry32(seed);
+  const P = new Pic(); spec.food.draw(P);
+  const { W, H, g } = P.raster(spec.food.bw, spec.food.bh, spec.k);
+  // 16面から色を1つ、31面から2つ増やす: いちばん多い色（次いで2番目に多い色）を、右下側の半分だけ別の濃さの色にする（陰影のように見える）
+  const extra = lv >= 31 ? 2 : lv >= 16 ? 1 : 0;
+  if (extra){
+    const cnt = {}; for (const v of g) if (v) cnt[v] = (cnt[v] || 0) + 1;
+    const order = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]); const used = order.map(k => COL[k] || k);
+    for (let e = 0; e < extra && e < order.length; e++){
+      const src = order[e]; const nc = variantColor(COL[src] || src, used); if (!nc) continue; used.push(nc);
+      const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src) cells.push(i);
+      const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;
+      cells.sort((a, b) => diag(a) - diag(b)); const th = diag(cells[Math.floor(cells.length / 2)]);
+      for (const i of cells) if (diag(i) >= th) g[i] = nc;
+    }
+  }
+  // まだら: 塗ってあるセルの一部を絵の中の別の色に置き換える（外周2マスは触らない＝輪郭を残す）
+  if (spec.noise > 0){
+    const cols = [...new Set(g.filter(v => v))];
+    for (let i = 0; i < g.length; i++) if (g[i] && R() < spec.noise){ const c = i % W, r = Math.floor(i / W);
+      let edge = false; for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const cc = c + dc, rr = r + dr; if (cc < 0 || rr < 0 || cc >= W || rr >= H || !g[rr * W + cc]) edge = true; }
+      if (!edge) g[i] = cols[Math.floor(R() * cols.length)]; }
+  }
+  let stacks = null;
+  for (let tries = 0; tries < 24; tries++){
+    const sp = Object.assign({}, spec, { shuffle: Math.max(0, spec.shuffle - Math.floor(tries / 4)) });
+    const s = buildStacks(g, W, H, sp, R);
+    if (solvable(g, W, H, s)){ stacks = s; break; }
+    if (tries === 23) stacks = s;
+  }
+  return { lv, seed, name: spec.food.name, W, H, grid: g, stacks, total: g.filter(v => v).length };
+}
+// ---------- 画面の配置（論理座標） ----------
+const PLATE = { x: 28, y: 76, w: 484, h: 460, pad: 16 };
+const HOLE = { x: 270, y: 598, rx: 36, ry: 20 };
+const SLOT_Y = 636, SLOT_H = 80, SLOT_W = 78;
+const TILE_Y = 748, TILE_H = 70, TILE_W = 78, ROW_GAP = 78, ROWS_SHOWN = 4;
+const colX = i => 270 + (i - 2) * 92;
+const SPD = 215;                 // アリの速さ px/s
+const DISPATCH = 0.16;           // 1匹出すごとの間隔 s
+
+// ---------- ゲーム状態 ----------
+let L = null;                    // 今のレベル（makeLevel の結果）
+let G = null;                    // 進行中の状態
+let boardDirty = true, bc = null, bcx = null;
+let sprites = new Map();
+let muted = false; try { muted = (localStorage.getItem('bh_mute') || localStorage.getItem('fh_mute')) === '1'; } catch (e) {}
+let bestLv = 1; try { bestLv = Math.max(1, parseInt(localStorage.getItem('bh_level') || localStorage.getItem('fh_level') || '1', 10) || 1); } catch (e) {}   // fh_ は旧名のころの保存（引き継ぐ）
+let mode = 'title';              // title / play / clear / stuck
+let now = 0, last = 0;
+
+function startLevel(lv, seed){
+  L = makeLevel(lv, seed);
+  const cs = Math.floor(Math.min((PLATE.w - PLATE.pad * 2) / L.W, (PLATE.h - PLATE.pad * 2) / L.H));
+  const px0 = PLATE.x + Math.round((PLATE.w - cs * L.W) / 2), py0 = PLATE.y + Math.round((PLATE.h - cs * L.H) / 2);
+  G = {
+    grid: L.grid.slice(), W: L.W, H: L.H, cs, px0, py0, left: L.total,
+    stacks: L.stacks.map(s => s.map(t => ({ col: t.col, n: t.n }))),
+    slots: Array.from({ length: NSLOT }, () => null),   // {col,n,tNext,sx,F,dirty,arr}
+    reserved: new Uint8Array(L.W * L.H), ants: [], parts: [], flying: [], colOff: new Array(NCOL).fill(0),
+    shake: 0, sent: 0, time: 0, stuckT: 0, winT: 0, rip: [], fast: false, fastT: 0, ret: null, retDirty: true
+  };
+  boardDirty = true; mode = 'play'; hideOv();
+  try { if (lv > bestLv){ bestLv = lv; } localStorage.setItem('bh_level', String(bestLv)); } catch (e) {}
+}
+const cellPx = (c, r) => [G.px0 + (c + 0.5) * G.cs, G.py0 + (r + 0.5) * G.cs];
+const idxPx = (F, i) => cellPx(i % F.GW - 1, Math.floor(i / F.GW) - 1);
+
+function markGridChanged(){ boardDirty = true; G.retDirty = true; for (const s of G.slots) if (s) s.dirty = true; }
+
+// 帰り道用: 穴へ最短で戻るための距離場。絵の下のリング（どの列でもよい）を出口にし、
+// 出口から穴までの直線距離をそのセルの初期コストにしたダイクストラ（マス単位）。
+function retField(grid, W, H){
+  const GW = W + 2, GH = H + 2, N = GW * GH;
+  const dist = new Float32Array(N).fill(Infinity), par = new Int32Array(N).fill(-1);
+  const pass = i => { const c = i % GW - 1, r = Math.floor(i / GW) - 1; return c < 0 || r < 0 || c >= W || r >= H || grid[r * W + c] === 0; };
+  const hp = []; // 2分ヒープ [cost, idx]
+  const push = (d, i) => { hp.push([d, i]); let k = hp.length - 1; while (k > 0){ const p = (k - 1) >> 1; if (hp[p][0] <= hp[k][0]) break; [hp[p], hp[k]] = [hp[k], hp[p]]; k = p; } };
+  const pop = () => { const top = hp[0], e = hp.pop(); if (hp.length){ hp[0] = e; let k = 0; for (;;){ let l = 2 * k + 1, r = l + 1, m = k; if (l < hp.length && hp[l][0] < hp[m][0]) m = l; if (r < hp.length && hp[r][0] < hp[m][0]) m = r; if (m === k) break; [hp[m], hp[k]] = [hp[k], hp[m]]; k = m; } } return top; };
+  for (let c = -1; c <= W; c++){ const i = (H + 1) * GW + (c + 1); const [x, y] = cellPx(c, H); dist[i] = Math.hypot(x - HOLE.x, y - HOLE.y) / G.cs; push(dist[i], i); }
+  while (hp.length){ const [d, i] = pop(); if (d > dist[i]) continue;
+    const c = i % GW, r = Math.floor(i / GW); const nb = [];
+    if (c > 0) nb.push(i - 1); if (c < GW - 1) nb.push(i + 1); if (r > 0) nb.push(i - GW); if (r < GH - 1) nb.push(i + GW);
+    for (const j of nb){ if (!pass(j)) continue; if (dist[j] > d + 1){ dist[j] = d + 1; par[j] = i; push(dist[j], j); } } }
+  return { dist, par, GW, GH };
+}
+function returnPath(c, r){
+  if (G.retDirty || !G.ret){ G.ret = retField(G.grid, G.W, G.H); G.retDirty = false; }
+  const R = G.ret; let j = (r + 1) * R.GW + (c + 1); if (!(R.dist[j] < Infinity)) return null;
+  const back = []; for (; j >= 0; j = R.par[j]) back.push(idxPx(R, j));
+  back.push([HOLE.x + (rnd() - 0.5) * 20, HOLE.y]); return back;
+}
+
+// 壺（枠）からアリを1匹送り出す
+function dispatch(s, si){
+  if (s.dirty || !s.F){ s.F = field(G.grid, G.W, G.H, s.sx); s.dirty = false; }
+  let best = Infinity, bc = -1, br = -1, bi = -1;
+  for (let r = 0; r < G.H; r++) for (let c = 0; c < G.W; c++){
+    const i = r * G.W + c; if (G.grid[i] !== s.col || G.reserved[i]) continue;
+    const q = reach(s.F, G.grid, G.W, G.H, c, r); if (q && q[0] < best){ best = q[0]; bc = c; br = r; bi = q[1]; }
+  }
+  if (bc < 0) return false;
+  G.reserved[br * G.W + bc] = 1; s.n--;
+  // 経路: 枠 → 入口のリング → 親をたどって隣のセル → ブロック
+  const cells = []; for (let j = bi; j >= 0; j = s.F.par[j]) cells.push(j); cells.reverse();
+  const path = [[colX(si), SLOT_Y + 6]]; for (const j of cells) path.push(idxPx(s.F, j)); path.push(cellPx(bc, br));
+  const back = []; for (let j = cells.length - 1; j >= 0; j--) back.push(idxPx(s.F, cells[j])); back.push([HOLE.x + (rnd() - 0.5) * 20, HOLE.y]);
+  const a = { col: s.col, x: path[0][0], y: path[0][1], path, back, i: 1, st: 0, t: 0, ang: -Math.PI / 2, ph: rnd() * 6.28, c: bc, r: br, sp: SPD * (0.9 + rnd() * 0.25) };
+  G.ants.push(a); return true;
+}
+
+function updateAnts(dt){
+  const A = G.ants;
+  for (let k = A.length - 1; k >= 0; k--){
+    const a = A[k]; a.t += dt;
+    if (a.st === 1){ if (a.t > 0.2){ a.st = 2; a.path = a.back; a.i = 0; a.t = 0; } continue; }
+    let step = a.sp * dt;
+    while (step > 0 && a.i < a.path.length){
+      const [tx, ty] = a.path[a.i]; const dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy);
+      if (d <= step){ a.x = tx; a.y = ty; step -= d; a.i++; }
+      else { a.x += dx / d * step; a.y += dy / d * step; const ta = Math.atan2(dy, dx); let da = ta - a.ang; da = Math.atan2(Math.sin(da), Math.cos(da)); a.ang += da * Math.min(1, dt * 14); step = 0; }
+    }
+    if (a.i >= a.path.length){
+      if (a.st === 0){ // ブロックに到着: 食べる
+        const i = a.r * G.W + a.c;
+        if (G.grid[i]){ G.grid[i] = 0; G.left--; G.reserved[i] = 0; markGridChanged(); burst(a.x, a.y, COL[a.col] || a.col); pop(); }
+        const rp = returnPath(a.c, a.r); if (rp) a.back = rp;   // 最短の帰り道（取れなければ来た道を戻る）
+        a.st = 1; a.t = 0;
+      } else { // 穴に帰った
+        G.rip.push({ x: a.x, y: a.y, t: 0, col: a.col }); A.splice(k, 1);
+      }
+    }
+  }
+}
+function burst(x, y, col){ for (let j = 0; j < 4; j++) G.parts.push({ x, y, vx: (rnd() - 0.5) * 160, vy: -40 - rnd() * 120, t: 0, col, s: 3 + rnd() * 3 }); if (G.parts.length > 240) G.parts.splice(0, G.parts.length - 240); }
+
+function update(dt){
+  if (mode !== 'play') return;
+  // 壺を全部最前列（枠）に並べ終えたら、もう操作は無い＝アリを倍速にする
+  // 一度倍速になったらクリア（または詰み）までそのまま（枠が空になっても戻さない）
+  const wasFast = G.fast; G.fast = G.fast || (G.stacks.every(s => s.length === 0) && G.flying.length === 0);
+  if (G.fast && !wasFast){ G.fastT = 0; click(); }
+  const rdt = dt; if (G.fast){ dt *= 2; G.fastT += rdt; }
+  G.time += dt; now += dt;
+  // 飛んでいる壺
+  for (let k = G.flying.length - 1; k >= 0; k--){ const f = G.flying[k]; f.t += dt;
+    if (f.t >= 0.26){ G.slots[f.slot] = { col: f.col, n: f.n, tNext: now, sx: Math.max(0, Math.min(G.W - 1, Math.round((colX(f.slot) - G.px0) / G.cs - 0.5))), F: null, dirty: true, arr: 0 }; G.flying.splice(k, 1); } }
+  for (let i = 0; i < NCOL; i++) if (G.colOff[i] > 0) G.colOff[i] = Math.max(0, G.colOff[i] - dt * 520);
+  // 枠から送り出す
+  G.slots.forEach((s, si) => { if (!s) return; s.arr += dt;
+    if (s.n <= 0){ G.slots[si] = null; return; }   // 全員出発したら枠が空く
+    if (now >= s.tNext){ if (dispatch(s, si)) s.tNext = now + DISPATCH; else s.tNext = now + 0.22; }
+  });
+  updateAnts(dt);
+  for (let k = G.parts.length - 1; k >= 0; k--){ const p = G.parts[k]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * dt; if (p.t > 0.4) G.parts.splice(k, 1); }
+  for (let k = G.rip.length - 1; k >= 0; k--){ const p = G.rip[k]; p.t += dt; if (p.t > 0.4) G.rip.splice(k, 1); }
+  if (G.shake > 0) G.shake = Math.max(0, G.shake - dt);
+  // クリア判定
+  if (G.left <= 0){ G.winT += rdt; if (G.ants.length === 0 || G.winT > 2.5){ mode = 'clear'; chime(); showClear(); } return; }
+  // お手上げ判定: 枠が全部埋まり、どの枠も食べる物が無く、歩いているアリもいない
+  G.stuckT += rdt;
+  if (G.stuckT > 0.5){ G.stuckT = 0;
+    const full = G.slots.every(s => s) && G.flying.length === 0;
+    const stacksEmpty = G.stacks.every(s => s.length === 0) && G.slots.every(s => !s) && G.flying.length === 0;
+    if ((full || stacksEmpty) && G.ants.length === 0){
+      let any = false;
+      for (const s of G.slots){ if (!s || s.n <= 0) continue; if (s.dirty || !s.F){ s.F = field(G.grid, G.W, G.H, s.sx); s.dirty = false; }
+        for (let r = 0; r < G.H && !any; r++) for (let c = 0; c < G.W; c++){ const i = r * G.W + c; if (G.grid[i] === s.col && !G.reserved[i] && reach(s.F, G.grid, G.W, G.H, c, r)){ any = true; break; } } }
+      if (!any){ mode = 'stuck'; buzz(); showStuck(); }
+    }
+  }
+}
+
+// 山札の上の壺をタップ
+function tapColumn(i){
+  if (mode !== 'play' || !G.stacks[i].length) return;
+  let j = G.slots.findIndex((s, k) => !s && !G.flying.some(f => f.slot === k));
+  if (j < 0){ G.shake = 0.35; thud(); return; }
+  const t = G.stacks[i].shift(); G.colOff[i] = ROW_GAP; G.sent++;
+  G.flying.push({ col: t.col, n: t.n, x0: colX(i), y0: TILE_Y + TILE_H / 2, x1: colX(j), y1: SLOT_Y + SLOT_H / 2, t: 0, slot: j });
+  click();
+}
+// ---------- 音（WebAudio。ミュート可） ----------
+let AC = null, lastPop = 0;
+function ac(){ if (!AC){ try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } } if (AC && AC.state === 'suspended') AC.resume(); return AC; }
+function tone(f, dur, type, vol, slide){ if (muted) return; const a = ac(); if (!a) return; const o = a.createOscillator(), g = a.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, a.currentTime); if (slide) o.frequency.exponentialRampToValueAtTime(slide, a.currentTime + dur); g.gain.setValueAtTime(vol || 0.15, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + dur); }
+function pop(){ if (now - lastPop < 0.07) return; lastPop = now; tone(520 + rnd() * 300, 0.07, 'triangle', 0.08, 200); }
+function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
+function thud(){ tone(140, 0.18, 'sawtooth', 0.12, 80); }
+function buzz(){ tone(220, 0.5, 'sawtooth', 0.12, 110); setTimeout(() => tone(180, 0.6, 'sawtooth', 0.12, 90), 250); }
+function chime(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'sine', 0.14), i * 110)); }
+
+// ---------- 描画 ----------
+function rr(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+let wood = null;
+function drawWood(){
+  if (!wood){ wood = document.createElement('canvas'); wood.width = LW * DPR; wood.height = LH * DPR; const w = wood.getContext('2d'); w.scale(DPR, DPR);
+    w.fillStyle = '#c99257'; w.fillRect(0, 0, LW, LH);
+    for (let x = 0; x < LW; x += 108){ w.fillStyle = x % 216 ? '#cb9659' : '#c48c50'; w.fillRect(x, 0, 108, LH); w.fillStyle = 'rgba(80,40,10,.18)'; w.fillRect(x, 0, 3, LH);
+      for (let y = 0; y < LH; y += 23){ w.fillStyle = 'rgba(120,70,25,' + (0.05 + ((x * 7 + y * 13) % 10) / 100) + ')'; w.fillRect(x + 4, y + ((x / 108) * 9) % 23, 100, 6); } }
+    w.fillStyle = 'rgba(0,0,0,.18)'; w.fillRect(0, 0, LW, 64); }
+  ctx.drawImage(wood, 0, 0, LW, LH);
+}
+// アリのスプライト（右向き）。丸い大きな頭・大きな目・ほっぺ・先に玉のついた触角で、かわいらしく
+function antSprite(col, fr){
+  const key = col + fr; if (sprites.has(key)) return sprites.get(key);
+  const S = 40, c = document.createElement('canvas'); c.width = S * DPR; c.height = S * DPR; const g = c.getContext('2d'); g.scale(DPR, DPR); g.translate(S / 2, S / 2);
+  const body = COL[col] || col, dark = shade(body, 0.45), light = shade(body, 1.35); g.lineCap = 'round'; g.lineJoin = 'round';
+  // 脚（3対・短めで丸く）
+  g.strokeStyle = dark; g.lineWidth = 2; const sh = fr ? 1.8 : -1.8;
+  for (const [x, y] of [[-6, 5.5], [-1.5, 6], [2.5, 5.5]]){ g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + sh * 0.5, y * 0.6, x + sh, y); g.moveTo(x, 0); g.quadraticCurveTo(x - sh * 0.5, -y * 0.6, x - sh, -y); g.stroke(); }
+  // 触角（先に玉）
+  g.lineWidth = 1.5; g.beginPath(); g.moveTo(8, -2.5); g.quadraticCurveTo(10.5, -5, 12.5, -6); g.moveTo(8, 2.5); g.quadraticCurveTo(10.5, 5, 12.5, 6); g.stroke();
+  g.fillStyle = dark; g.beginPath(); g.arc(12.8, -6.3, 1.4, 0, 7); g.arc(12.8, 6.3, 1.4, 0, 7); g.fill();
+  // 体（おしり・むね・頭）
+  g.fillStyle = body; g.strokeStyle = dark; g.lineWidth = 1.4;
+  g.beginPath(); g.ellipse(-8.5, 0, 5.2, 4.3, 0, 0, 7); g.fill(); g.stroke();
+  g.beginPath(); g.arc(-1.5, 0, 3.6, 0, 7); g.fill(); g.stroke();
+  g.beginPath(); g.arc(6, 0, 5.4, 0, 7); g.fill(); g.stroke();
+  // つや
+  g.fillStyle = light; g.globalAlpha = 0.7; g.beginPath(); g.ellipse(-9.5, -1.6, 2.2, 1.1, -0.3, 0, 7); g.fill(); g.beginPath(); g.arc(4.2, -2.6, 1.3, 0, 7); g.fill(); g.globalAlpha = 1;
+  // 目（大きめ・白目＋黒目＋ハイライト）
+  g.fillStyle = '#fff'; g.strokeStyle = dark; g.lineWidth = 0.8;
+  for (const y of [-2.4, 2.4]){ g.beginPath(); g.ellipse(7.6, y, 2.1, 2.4, 0, 0, 7); g.fill(); g.stroke(); }
+  g.fillStyle = '#1e1e1e'; for (const y of [-2.2, 2.2]){ g.beginPath(); g.ellipse(8.3, y, 1.25, 1.5, 0, 0, 7); g.fill(); }
+  g.fillStyle = '#fff'; for (const y of [-2.9, 1.5]){ g.beginPath(); g.arc(8.8, y, 0.55, 0, 7); g.fill(); }
+  // ほっぺ・口
+  g.fillStyle = 'rgba(255,120,150,.55)'; for (const y of [-4.6, 4.6]){ g.beginPath(); g.ellipse(5.2, y, 1.3, 0.9, 0, 0, 7); g.fill(); }
+  g.strokeStyle = dark; g.lineWidth = 0.9; g.beginPath(); g.arc(10.2, 0, 1.1, -1.1, 1.1); g.stroke();
+  sprites.set(key, c); return c;
+}
+function drawBoard(){
+  const cs = G.cs;
+  if (!bc){ bc = document.createElement('canvas'); bcx = bc.getContext('2d'); }
+  if (boardDirty){ bc.width = PLATE.w * DPR; bc.height = PLATE.h * DPR; bcx.setTransform(DPR, 0, 0, DPR, 0, 0); bcx.clearRect(0, 0, PLATE.w, PLATE.h);
+    const ox = G.px0 - PLATE.x, oy = G.py0 - PLATE.y;
+    for (let r = 0; r < G.H; r++) for (let c = 0; c < G.W; c++){ const v = G.grid[r * G.W + c]; if (!v) continue; const col = COL[v] || v;
+      const x = ox + c * cs, y = oy + r * cs, s = cs - 1;
+      bcx.fillStyle = shade(col, 0.7); bcx.fillRect(x, y, s, s);
+      bcx.fillStyle = col; bcx.fillRect(x, y, s - 1, s - 1);
+      bcx.fillStyle = 'rgba(255,255,255,.35)'; bcx.fillRect(x, y, s - 1, 1); bcx.fillRect(x, y, 1, s - 1); }
+    boardDirty = false; }
+  ctx.drawImage(bc, PLATE.x, PLATE.y, PLATE.w, PLATE.h);
+}
+function tile(x, y, w, h, col, n, dim){
+  const c = COL[col] || col;
+  ctx.fillStyle = shade(c, 0.55); rr(x - w / 2, y - h / 2 + 6, w, h, 12); ctx.fill();
+  ctx.fillStyle = c; rr(x - w / 2, y - h / 2, w, h - 6, 12); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.28)'; rr(x - w / 2 + 5, y - h / 2 + 4, w - 10, 10, 5); ctx.fill();
+  ctx.font = '900 30px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 5; ctx.strokeStyle = shade(c, 0.5); ctx.lineJoin = 'round'; ctx.strokeText(n, x, y - 2); ctx.fillStyle = '#fff'; ctx.fillText(n, x, y - 2);
+  if (dim === 'top'){ ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.85)'; rr(x - w / 2 - 2, y - h / 2 - 2, w + 4, h + 10, 14); ctx.stroke(); }
+}
+function draw(){
+  drawWood();
+  // ヘッダー
+  ctx.textBaseline = 'middle'; ctx.font = '900 26px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff3dc'; ctx.fillText(L ? 'レベル ' + L.lv + '　' + L.name : 'ブロックハンター', 20, 33, 372);   // 長い名前は詰めて収める
+  for (const [x, ch] of [[420, '？'], [470, muted ? '🔇' : '🔊'], [520, '↻']]){ ctx.fillStyle = 'rgba(60,30,10,.55)'; ctx.beginPath(); ctx.arc(x, 33, 20, 0, 7); ctx.fill(); ctx.fillStyle = '#fff3dc'; ctx.textAlign = 'center'; ctx.font = '900 22px ' + getComputedStyle(document.body).fontFamily; ctx.fillText(ch, x, 34); }
+  if (!G) return;
+  // 皿（板）
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; rr(PLATE.x + 4, PLATE.y + 8, PLATE.w, PLATE.h, 16); ctx.fill();
+  ctx.fillStyle = '#efe0c8'; rr(PLATE.x, PLATE.y, PLATE.w, PLATE.h, 16); ctx.fill();
+  ctx.fillStyle = '#f7ecd8'; rr(PLATE.x + 6, PLATE.y + 6, PLATE.w - 12, PLATE.h - 12, 12); ctx.fill();
+  drawBoard();
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.font = '700 18px ' + getComputedStyle(document.body).fontFamily; ctx.fillStyle = '#9a7a55'; ctx.fillText('のこり ' + G.left, PLATE.x + PLATE.w - 16, PLATE.y + 20);
+  // 穴
+  ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.ellipse(HOLE.x, HOLE.y + 3, HOLE.rx + 6, HOLE.ry + 5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#2b170a'; ctx.beginPath(); ctx.ellipse(HOLE.x, HOLE.y, HOLE.rx, HOLE.ry, 0, 0, 7); ctx.fill();
+  for (const p of G.rip){ ctx.strokeStyle = 'rgba(255,230,180,' + (1 - p.t / 0.4) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(p.x, p.y, 8 + p.t * 60, 4 + p.t * 30, 0, 0, 7); ctx.stroke(); }
+  // 枠（ゆれ）
+  const sh = G.shake > 0 ? Math.sin(G.shake * 60) * 6 : 0;
+  for (let i = 0; i < NSLOT; i++){ const x = colX(i) + sh, s = G.slots[i];
+    if (!s){ ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(x - SLOT_W / 2, SLOT_Y + 4, SLOT_W, SLOT_H, 12); ctx.fill(); ctx.fillStyle = '#fff8ea'; rr(x - SLOT_W / 2, SLOT_Y, SLOT_W, SLOT_H - 4, 12); ctx.fill(); }
+    else { const c = COL[s.col] || s.col; tile(x, SLOT_Y + SLOT_H / 2 + 4, SLOT_W, SLOT_H - 8, s.col, s.n);
+      // 壺のふちから顔をのぞかせるアリ（上向き）
+      ctx.save(); ctx.translate(x, SLOT_Y + 3); ctx.rotate(-Math.PI / 2); ctx.drawImage(antSprite(s.col, 0), -16, -16, 32, 32); ctx.restore(); } }
+  if (G.fast){ const k = Math.min(1, G.fastT * 4); ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = '#ffb43a'; rr(HOLE.x + 50, HOLE.y - 16, 96, 32, 16); ctx.fill(); ctx.fillStyle = '#4a2a08'; ctx.font = '900 18px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('⏩ 倍速', HOLE.x + 98, HOLE.y + 1); ctx.restore(); }
+  // アリ
+  const fr = Math.floor(G.time * 14) % 2;
+  for (const a of G.ants){ const sp = antSprite(a.col, (fr + (a.ph > 3 ? 1 : 0)) % 2);
+    ctx.save(); ctx.translate(a.x + Math.sin(G.time * 9 + a.ph) * 1.2, a.y); ctx.rotate(a.ang); if (a.st === 1) ctx.rotate(Math.sin(a.t * 60) * 0.25); ctx.drawImage(sp, -20, -20, 40, 40);
+    if (a.st === 2){ const c = COL[a.col] || a.col; const s = Math.max(6, Math.min(13, G.cs * 0.7)); ctx.fillStyle = shade(c, 0.7); ctx.fillRect(-7 - s / 2, -s / 2 + 1, s + 1, s + 1); ctx.fillStyle = c; ctx.fillRect(-7 - s / 2, -s / 2, s, s); }   // 背中にかついで運ぶ（顔は隠さない）
+    ctx.restore(); }
+  for (const p of G.parts){ ctx.globalAlpha = 1 - p.t / 0.4; ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, p.s, p.s); } ctx.globalAlpha = 1;
+  // 山札（上4段。4段目は薄く）
+  for (let i = 0; i < NCOL; i++){ const st = G.stacks[i];
+    for (let r = Math.min(ROWS_SHOWN, st.length) - 1; r >= 0; r--){ const t = st[r]; const y = TILE_Y + TILE_H / 2 + r * ROW_GAP + G.colOff[i];
+      if (y + TILE_H / 2 > LH + 10) continue; tile(colX(i), y, TILE_W, TILE_H, t.col, t.n, r === 0 && G.colOff[i] === 0 ? 'top' : ''); }
+    if (st.length > ROWS_SHOWN){ ctx.fillStyle = 'rgba(255,245,225,.8)'; ctx.font = '700 14px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('あと' + (st.length - ROWS_SHOWN), colX(i), LH - 8); } }
+  // 飛んでいる壺
+  for (const f of G.flying){ const u = Math.min(1, f.t / 0.26), e = 1 - (1 - u) * (1 - u); const x = f.x0 + (f.x1 - f.x0) * e, y = f.y0 + (f.y1 - f.y0) * e - Math.sin(u * Math.PI) * 60; tile(x, y, TILE_W, TILE_H, f.col, f.n); }
+}
+
+// ---------- オーバーレイ ----------
+function showOv(html){ card.innerHTML = html; ov.classList.add('on'); }
+function hideOv(){ ov.classList.remove('on'); }
+function showTitle(){ mode = 'title';
+  // 10面ごとのチェックポイント（1・11・21…のうち到達した分）からやり直せる
+  const cps = []; for (let lv = 1; lv <= bestLv; lv += 10) cps.push(lv);
+  const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
+  showOv(`<div class="ants">🐜🐜🐜</div><h1>ブロックハンター</h1><p>色ごとのアリを送って、ドット絵の食べ物・乗り物・家電・名画を食べ尽くそう！</p>
+    <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}<button class="btn sub" id="bHelp">あそびかた</button>`);
+  document.getElementById('bCont').onclick = () => startLevel(bestLv, Date.now() & 0xffffff);
+  card.querySelectorAll('.cp').forEach(b => { b.onclick = () => startLevel(parseInt(b.dataset.lv, 10), Date.now() & 0xffffff); });
+  document.getElementById('bHelp').onclick = () => showHelp(showTitle);
+}
+function showHelp(back){
+  showOv(`<h2>あそびかた</h2><div class="help">
+    <b>①</b> 下の5列の、いちばん上の壺をタップすると上の枠に入ります（枠は5つ）。<br>
+    <b>②</b> 壺からアリが出て、絵の<b>外側から届く</b>同じ色のブロックだけを食べて穴に運びます。数字は残りのアリの数。<br>
+    <b>③</b> 囲まれているブロックは食べられません。5つの枠が「食べる物がない色」で埋まるとお手上げ。<br>
+    <b>④</b> 全部食べたらクリア。レベルが上がるほど絵が大きく、まだらになります。<br>
+    <b>PC</b>は数字キー <b>1〜5</b> でも左から順に送れます。</div>
+    <button class="btn go" id="bBack">もどる</button>`);
+  document.getElementById('bBack').onclick = back;
+}
+function showClear(){
+  showOv(`<div class="ants">🎉🐜🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>
+    <button class="btn go" id="bNext">つぎのレベルへ</button><button class="btn sub" id="bTitle">タイトルへ</button>`);
+  document.getElementById('bNext').onclick = () => startLevel(L.lv + 1, Date.now() & 0xffffff);
+  document.getElementById('bTitle').onclick = showTitle;
+}
+function showStuck(){
+  showOv(`<div class="ants">😵🐜😵</div><h2>アリが詰まった！</h2><p>5つの枠がぜんぶ「食べる物がない色」になりました。</p><p class="sub">食べる物が外側に見えている色から送ると詰まりにくい。</p>
+    <button class="btn go" id="bRetry">同じ並びでやり直す</button><button class="btn sub" id="bShuf">ちがう並びでやり直す</button><button class="btn sub" id="bTitle">タイトルへ</button>`);
+  document.getElementById('bRetry').onclick = () => startLevel(L.lv, L.seed);
+  document.getElementById('bShuf').onclick = () => startLevel(L.lv, Date.now() & 0xffffff);
+  document.getElementById('bTitle').onclick = showTitle;
+}
+
+// ---------- 入力 ----------
+cv.addEventListener('pointerdown', e => {
+  const x = (e.clientX - offX) / scale, y = (e.clientY - offY) / scale; ac();
+  if (y < 64){ if (Math.abs(x - 520) < 24 && G){ showOv(`<h2>やり直す？</h2><p>レベル ${L.lv} を最初からにします。</p><button class="btn go" id="bA">同じ並びで</button><button class="btn sub" id="bB">ちがう並びで</button><button class="btn sub" id="bT">タイトルへ</button><button class="btn sub" id="bC">つづける</button>`);
+      document.getElementById('bA').onclick = () => startLevel(L.lv, L.seed); document.getElementById('bB').onclick = () => startLevel(L.lv, Date.now() & 0xffffff);
+      document.getElementById('bT').onclick = showTitle; document.getElementById('bC').onclick = () => { hideOv(); mode = 'play'; }; mode = 'pause'; return; }
+    if (Math.abs(x - 470) < 24){ muted = !muted; try { localStorage.setItem('bh_mute', muted ? '1' : '0'); } catch (e2) {} return; }
+    if (Math.abs(x - 420) < 24 && G){ const m = mode; mode = 'pause'; showHelp(() => { hideOv(); mode = m; }); return; } }
+  if (mode !== 'play') return;
+  if (y >= TILE_Y - 6 && y <= TILE_Y + TILE_H + 6){ for (let i = 0; i < NCOL; i++) if (Math.abs(x - colX(i)) <= TILE_W / 2 + 4){ tapColumn(i); break; } }
+});
+document.addEventListener('keydown', e => { if (mode !== 'play') return; const k = parseInt(e.key, 10); if (k >= 1 && k <= 5) tapColumn(k - 1); });
+
+// ---------- ループ ----------
+let frozen = false;
+function loop(ts){ const dt = Math.min(0.05, (ts - last) / 1000 || 0); last = ts; if (!frozen) update(dt); draw(); requestAnimationFrame(loop); }
+fit();
+// ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
+const Q = new URLSearchParams(location.search);
+if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
+if (Q.get('order')) document.title = PICS.map((p, i) => (i + 1) + ':' + p.name + '(' + makeLevel(i + 1, 1).total + ')').join(' ');   // 動作確認用: 出る順とブロック数
+if (Q.get('lv')){ startLevel(parseInt(Q.get('lv'), 10) || 1, parseInt(Q.get('seed') || '1', 10)); } else showTitle();
+if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let best = -1, bv = -1;
+      for (let i = 0; i < NCOL; i++){ const t = G.stacks[i][0]; if (!t) continue; let v = 0; const F = field(G.grid, G.W, G.H, Math.floor(G.W / 2));
+        for (let r = 0; r < G.H; r++) for (let c = 0; c < G.W; c++) if (G.grid[r * G.W + c] === t.col && reach(F, G.grid, G.W, G.H, c, r)) v++; if (v > bv){ bv = v; best = i; } }
+      if (best >= 0 && G.slots.some(s => !s)) tapColumn(best); }
+    else if (mode === 'clear'){ document.title = 'CLEAR lv' + L.lv + ' sent' + G.sent + ' t' + G.time.toFixed(1); if (Q.get('next')) startLevel(L.lv + 1, 1); }
+    else if (mode === 'stuck'){ document.title = 'STUCK lv' + L.lv + ' left' + G.left; } };
+  if (Q.get('sync')){ // 同期的に回す（ヘッドレス確認用）: &to=13 で連続、&stopAt=6 でその時刻の画面で止める
+    window.onerror = (m, s, l) => { document.title = 'ERR ' + m + ' @' + l; };
+    const to = parseInt(Q.get('to') || '0', 10), stopAt = parseFloat(Q.get('stopAt') || '0'); const res = [];
+    try { for (let f = 0; f < 60 * 600; f++){ if (f % 24 === 0) bot(); update(1 / 60);
+        if (stopAt && G.time >= stopAt) break;
+        if (mode === 'clear' || mode === 'stuck'){ res.push('lv' + L.lv + (mode === 'clear' ? ':OK' : ':STUCK left' + G.left) + ' t' + G.time.toFixed(0) + ' n' + L.total + ' ' + G.W + 'x' + G.H + ' tiles' + L.stacks.flat().length);
+          if (mode === 'clear' && to && L.lv < to) startLevel(L.lv + 1, parseInt(Q.get('seed') || '1', 10)); else break; } }
+      if (!stopAt) document.title = res.join(' | ') || ('RUN lv' + L.lv + ' left' + G.left + ' t' + G.time.toFixed(0)); else { hideOv(); frozen = true; } }
+    catch (e) { document.title = 'ERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]; }
+  } else setInterval(bot, 400); }
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
