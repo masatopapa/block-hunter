@@ -82,12 +82,13 @@ const COL = {
   gray:'#a3a9b1', dkgray:'#626a74', navy:'#2c4f9e', dkorange:'#d8661c'
 };
 // 既存の色と見分けがつく「同系の別の濃さ」を1つ返す（明るい色は暗く、暗い色は明るく。近すぎる候補は飛ばす）
-function variantColor(hex, used){
-  const rgb = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
-  const dist = (a, b) => { const p = rgb(a), q = rgb(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
-  const [r, g, b] = rgb(hex); const lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
-  const ks = lum > 0.55 ? [0.74, 0.6, 1.3, 0.48] : [1.45, 1.75, 0.6, 2.1];
-  for (const k of ks){ const c = shade(hex, k); if (used.every(u => dist(u, c) >= 52)) return c; }
+const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const colorDist = (a, b) => { const p = rgbOf(a), q = rgbOf(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+function variantColor(hex, used, dir){ // dir: 'dark' | 'light' | 省略＝明るい色は暗く、暗い色は明るく
+  const [r, g, b] = rgbOf(hex); const lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
+  const dark = [0.74, 0.6, 0.48, 0.36], light = [1.3, 1.45, 1.75, 2.1];
+  const ks = dir === 'dark' ? dark : dir === 'light' ? light : lum > 0.55 ? [0.74, 0.6, 1.3, 0.48] : [1.45, 1.75, 0.6, 2.1];
+  for (const k of ks){ const c = shade(hex, k); if (used.every(u => colorDist(u, c) >= 52)) return c; }
   return null;
 }
 function shade(hex, k){ // k<1 で暗く、>1 で明るく
@@ -447,6 +448,43 @@ function applyExtras(g, W, H, extra){
   return g;
 }
 function picColors(p, k, extra){ const { W, H, g } = rasterPic(p, k); applyExtras(g, W, H, extra); return new Set(g.filter(v => v)).size; }
+// 絵の複雑さ（レベルで段階的に上げる）: d1=1色を濃淡2段階に / d2=2色 / d3=2色＋輪郭線＋いちばん多い色に網点 / d4=3色（最多色は明・基本・暗の3段階）＋輪郭線＋2色に網点
+function applyDetail(g, W, H, d){
+  if (!d) return g;
+  const cnt = {}; for (const v of g) if (v) cnt[v] = (cnt[v] || 0) + 1;
+  const order = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]); const used = order.map(k => COL[k] || k);
+  const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;
+  const tones = d >= 4 ? 3 : d >= 2 ? 2 : 1; const tone = {};   // tone[元の色] = 濃淡分けで作った色
+  for (let e = 0; e < tones && e < order.length; e++){
+    const src = order[e], hex = COL[src] || src;
+    const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src) cells.push(i);
+    cells.sort((a, b) => diag(a) - diag(b));
+    if (d >= 4 && e === 0){ // 最多色は上から 明・基本・暗 の3段階
+      const dk = variantColor(hex, used, 'dark'); if (dk){ used.push(dk); tone[src] = dk; for (const i of cells.slice(Math.floor(cells.length * 2 / 3))) g[i] = dk; }
+      const lt = variantColor(hex, used, 'light'); if (lt){ used.push(lt); for (const i of cells.slice(0, Math.floor(cells.length / 3))) g[i] = lt; }
+    } else {
+      const nc = variantColor(hex, used); if (!nc) continue; used.push(nc); tone[src] = nc;
+      for (const i of cells.slice(Math.floor(cells.length / 2))) g[i] = nc;
+    }
+  }
+  if (d >= 3){ // 輪郭線: 外（空き）に接するセルを濃い線の色に
+    const main = COL[order[0]] || order[0];
+    const oc = [shade(main, 0.4), '#2b2f55', '#4a2a1a', '#1f1f1f'].find(c => used.every(u => colorDist(u, c) >= 52));
+    if (oc){ used.push(oc); const edge = [];
+      for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (!g[i]) continue;
+        let out = false; for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const cc = c + dc, rr = r + dr; if (cc < 0 || rr < 0 || cc >= W || rr >= H || !g[rr * W + cc]) out = true; }
+        if (out) edge.push(i); }
+      for (const i of edge) g[i] = oc; }
+    // 網点: 多い色の中に格子状の点を打つ（d3は最多色だけ、d4は2色）。点の色はその色の濃淡分けで作った色を使い回す（孤立した色を増やさない＝詰まりにくい）
+    const texN = d >= 4 ? 2 : 1;
+    for (let e = 0; e < texN && e < order.length; e++){
+      const src = order[e], hex = COL[src] || src; let tc = tone[src]; if (!tc){ tc = variantColor(hex, used, 'dark'); if (!tc) continue; used.push(tc); }
+      for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (g[i] !== src) continue;
+        if (e === 0 ? (c % 3 === 1 && r % 3 === 1) : ((c + r) % 4 === 0 && c % 2 === 0)) g[i] = tc; }
+    }
+  }
+  return g;
+}
 // 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
 function buildOrder(filter, withPaintings){
   const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
@@ -478,12 +516,12 @@ function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名�
 }
 // ---------- レベル生成 ----------
 const NCOL = 5, NSLOT = 5;
-const MAXDIM = 36;
+const MAXDIM = 48;
 function levelSpec(lv){
   const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
-  if (PIC_OVERRIDE) return { food, k: 1, baseK: 1, limit: null, noise: 0, shuffle: 1, chunk: 30 };
-  // 1周目は基準サイズ、同じ絵が2回目以降に出るときは1.5倍（最大36マスで頭打ち＝3周目は2周目と同じ）
-  const baseK = Math.min(cyc >= 1 ? 1.5 : 1, MAXDIM / Math.max(food.bw, food.bh));
+  if (PIC_OVERRIDE) return { food, k: parseFloat(Q.get('k') || '1') || 1, baseK: 1, limit: null, detail: parseInt(Q.get('detail') || '0', 10) || 0, noise: 0, shuffle: 1, chunk: 30 };
+  // 1周目は基準サイズ、2周目以降は2倍（最大48マスで頭打ち）
+  const baseK = Math.min(cyc >= 1 ? 2 : 1, MAXDIM / Math.max(food.bw, food.bh));
   let k = baseK, limit = null;
   if (!food.paint){
     // 名画以外は周の6面・11面・16面…と5面ごとにブロック数を2割ずつ増やす（ただし次に出る名画より少なく＝makeLevelで抑える）
@@ -491,10 +529,12 @@ function levelSpec(lv){
     k = Math.min(MAXDIM / Math.max(food.bw, food.bh), baseK * Math.sqrt(1 + 0.2 * step));
     limit = nextPaintingLimit(pos);
   }
-  const noise = Math.max(0, Math.min(0.05, (lv - 4) * 0.0025));         // 5面目からまだら
-  const shuffle = Math.min(7, 1 + Math.floor((lv - 1) / 4));            // 山札の混ぜ具合
-  const chunk = 22 + Math.min(18, lv * 0.6);                              // 壺1つの平均アリ数
-  return { food, k, baseK, limit, noise, shuffle, chunk };
+  // 絵の複雑さ: 1周目 16面から1、31面から2、41面から3。2周目は最初から3、周の後半（21面目〜）と3周目以降は4
+  const detail = cyc === 0 ? (inLv >= 41 ? 3 : inLv >= 31 ? 2 : inLv >= 16 ? 1 : 0) : (cyc >= 2 || inLv > 20 ? 4 : 3);
+  const noise = Math.max(0, Math.min(detail >= 3 ? 0.02 : 0.05, (lv - 4) * 0.0025));   // 5面目からまだら（輪郭線・網点が入る複雑さ3以上では2%まで＝孤立マスで詰まりにくく）
+  const shuffle = Math.min(detail >= 3 ? 3 : 7, 1 + Math.floor((lv - 1) / 4));   // 山札の混ぜ具合（複雑な絵では3まで＝孤立した色で詰まりにくく）
+  const chunk = 22 + Math.min(18, lv * 0.6);                              // 壺1つの平均アリ数（大きい絵は makeLevel で増やす）
+  return { food, k, baseK, limit, detail, noise, shuffle, chunk };
 }
 
 // 外（リング）から届く範囲を測る。sx: スタート列（下のリングのどのセルから入るか）。
@@ -552,7 +592,7 @@ function buildStacks(grid, W, H, spec, R){
       cuts.push(size); rest -= size;
     }
     let at = 0;
-    for (const size of cuts){ const key = ls[Math.min(T - 1, at + Math.floor(size * 0.4))] + R() * 0.9; tiles.push({ col, n: size, key }); at += size; }
+    for (const size of cuts){ const key = ls[Math.min(T - 1, at + Math.floor(size * 0.65))] + R() * 0.9; tiles.push({ col, n: size, key }); at += size; }   // 壺はその分の65%が届くころに出る
   }
   tiles.sort((a, b) => a.key - b.key);
   // 近い順位どうしを混ぜる（spec.shuffle が大きいほど遠くまで入れ替わる）
@@ -562,27 +602,36 @@ function buildStacks(grid, W, H, spec, R){
   return stacks;
 }
 
-// ふつうに遊んで解けるかの簡易チェック（届く色を優先して送る）
-function solvable(grid, W, H, stacks0){
+// 今の盤面で外から届くブロックを色ごとにまとめる（1回のBFSで全色）
+function reachAll(g, W, H){ const F = field(g, W, H, Math.floor(W / 2)); const m = {};
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (g[i] && reach(F, g, W, H, c, r)) (m[g[i]] = m[g[i]] || []).push(i); } return m; }
+// 遊んで解けるかの簡易チェック。aggressive=false: 届く分を食べ切ってから次を選ぶ慎重な打ち方／true: 空き枠があれば届く色の壺をすぐ入れるせっかちな打ち方
+// mode: 'careful'＝届く分を食べ切ってから次を選ぶ／'aggressive'＝空き枠があれば届く色の壺をすぐ入れる／'interleave'＝少し食べては壺を送る（実際の遊びの時間差に近い）。R があれば届く色の中からランダムにも選ぶ
+function simulate(grid, W, H, stacks0, mode, R){
   const g = grid.slice(); const st = stacks0.map(s => s.map(t => ({ col: t.col, n: t.n })));
-  let slots = []; let left = g.filter(v => v).length; let guard = 0;
-  const reachable = col => { const F = field(g, W, H, Math.floor(W / 2)); const out = [];
-    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (g[i] === col && reach(F, g, W, H, c, r)) out.push(i); } return out; };
-  while (left > 0 && guard++ < 5000){
-    let moved = true;
-    while (moved){ moved = false;
-      for (const s of slots){ if (s.n <= 0) continue; const rs = reachable(s.col); if (!rs.length) continue;
-        const take = Math.min(s.n, rs.length); for (let j = 0; j < take; j++) g[rs[j]] = 0; s.n -= take; left -= take; moved = true; }
+  let slots = []; let left = blockCount(g); let guard = 0;
+  const bestTop = m => { let best = -1, bv = -1; const ok = [];
+    for (let i = 0; i < NCOL; i++){ const t = st[i][0]; if (!t) continue; const v = (m[t.col] || []).length; if (v > 0) ok.push([i, v]); if (v > bv){ bv = v; best = i; } }
+    if (R && ok.length && R() < 0.6){ const [i, v] = ok[Math.floor(R() * ok.length)]; return [i, v]; } return [best, bv]; };
+  while (left > 0 && guard++ < 8000){
+    let m = reachAll(g, W, H);
+    if (mode === 'aggressive'){ while (slots.length < NSLOT){ const [b, v] = bestTop(m); if (b < 0 || v <= 0) break; slots.push(st[b].shift()); } }
+    else if (mode === 'interleave' && slots.length < NSLOT){ const [b, v] = bestTop(m); if (b >= 0 && v >= Math.max(2, 0.3 * st[b][0].n)) slots.push(st[b].shift()); }   // 1回に1個だけ、その壺の3割以上が届くときに送る（ふつうの人の感覚）
+    let moved = true, ate = false;
+    while (moved){ moved = false; m = reachAll(g, W, H);
+      for (const s of slots){ if (s.n <= 0) continue; const rs = m[s.col] || []; if (!rs.length) continue;
+        let take = Math.min(s.n, rs.length); if (mode === 'interleave') take = Math.max(1, Math.min(take, Math.ceil(rs.length * (0.2 + 0.8 * (R ? R() : 0.5)))));
+        for (let j = 0; j < take; j++) g[rs[j]] = 0; s.n -= take; left -= take; moved = true; ate = true; }
       slots = slots.filter(s => s.n > 0);
+      if (mode === 'interleave' && moved) break;
     }
     if (left <= 0) return true;
-    // 送る壺を選ぶ: 届くブロックが多い色の山札トップ
-    let best = -1, bestV = -1;
-    for (let i = 0; i < NCOL; i++){ const t = st[i][0]; if (!t) continue; const v = reachable(t.col).length; if (v > bestV){ bestV = v; best = i; } }
+    if (mode === 'interleave' && ate) continue;
+    m = reachAll(g, W, H); let [best, bv] = bestTop(m);
     if (best < 0) return false;
-    if (bestV === 0){ // 届く色が無い: 空き枠があれば次の壺が届く色の列を1つ退かす
+    if (bv === 0){ // 届く色が無い: 空き枠があれば次の壺が届く色の列を1つ退かす
       if (slots.length >= NSLOT) return false;
-      let alt = -1; for (let i = 0; i < NCOL; i++){ const u = st[i][1]; if (u && reachable(u.col).length > 0){ alt = i; break; } }
+      let alt = -1; for (let i = 0; i < NCOL; i++){ const u = st[i][1]; if (u && (m[u.col] || []).length > 0){ alt = i; break; } }
       best = alt >= 0 ? alt : best;
     }
     if (slots.length >= NSLOT) return false;
@@ -590,15 +639,21 @@ function solvable(grid, W, H, stacks0){
   }
   return left <= 0;
 }
+// 「せっかち」（空き枠を全部すぐ埋める）はまだら模様の孤立マスで必ず詰むので判定には使わない（人の遊び方としては極端）
+function solvable(grid, W, H, stacks, R){
+  if (!simulate(grid, W, H, stacks, 'careful') || !simulate(grid, W, H, stacks, 'interleave')) return false;
+  for (let i = 0; i < 3; i++) if (!simulate(grid, W, H, stacks, ['careful', 'interleave', 'interleave'][i], R)) return false;   // ランダム混じりの打ち方3通り
+  return true;
+}
 
-function makeLevel(lv, seed){
-  const spec = levelSpec(lv); const R = mulberry32(seed);
+function makeLevel(lv, seed, dOverride){
+  const spec = levelSpec(lv); const R = mulberry32(seed); if (dOverride != null) spec.detail = dOverride;
   let k = spec.k, ras = rasterPic(spec.food, k);
   // 次に出る名画のブロック数以上になっていたら、基準サイズまでの範囲で少しずつ縮める
   while (spec.limit != null && blockCount(ras.g) >= spec.limit && k > spec.baseK + 1e-6){ k = Math.max(spec.baseK, k - 0.02); ras = rasterPic(spec.food, k); }
   const { W, H, g } = ras;
-  // 16面から色を1つ、31面から2つ増やす
-  applyExtras(g, W, H, lv >= 31 ? 2 : lv >= 16 ? 1 : 0);
+  applyDetail(g, W, H, spec.detail);   // 濃淡・輪郭線・網点で絵を複雑にする（色も増える）
+  spec.chunk = Math.max(spec.chunk, blockCount(g) / 36);   // 大きい絵でも壺が36個を超えないように
   // まだら: 塗ってあるセルの一部を絵の中の別の色に置き換える（外周2マスは触らない＝輪郭を残す）
   if (spec.noise > 0){
     const cols = [...new Set(g.filter(v => v))];
@@ -607,13 +662,15 @@ function makeLevel(lv, seed){
       if (!edge) g[i] = cols[Math.floor(R() * cols.length)]; }
   }
   let stacks = null;
-  for (let tries = 0; tries < 24; tries++){
-    const sp = Object.assign({}, spec, { shuffle: Math.max(0, spec.shuffle - Math.floor(tries / 4)) });
+  let tries = 0, valid = true;
+  for (; tries < 40; tries++){
+    const sp = Object.assign({}, spec, { shuffle: Math.max(0, spec.shuffle - Math.floor(tries / 5)) });
     const s = buildStacks(g, W, H, sp, R);
-    if (solvable(g, W, H, s)){ stacks = s; break; }
-    if (tries === 23) stacks = s;
+    if (solvable(g, W, H, s, R)){ stacks = s; break; }
   }
-  return { lv, seed, name: spec.food.name, W, H, grid: g, stacks, total: blockCount(g), k, limit: spec.limit };
+  // どの並びでも通らない絵は、複雑さを1段下げて作り直す（0でも通らなければ最後の並びで出す）
+  if (!stacks){ if (spec.detail > 0) return makeLevel(lv, seed, spec.detail - 1); valid = false; stacks = buildStacks(g, W, H, Object.assign({}, spec, { shuffle: 0 }), R); }
+  return { lv, seed, name: spec.food.name, W, H, grid: g, stacks, total: blockCount(g), k, limit: spec.limit, detail: spec.detail, tries, valid };
 }
 // ---------- 画面の配置（論理座標） ----------
 const PLATE = { x: 28, y: 76, w: 484, h: 460, pad: 16 };
@@ -866,9 +923,9 @@ function draw(){
       ctx.save(); ctx.translate(x, SLOT_Y + 3); ctx.rotate(-Math.PI / 2); ctx.drawImage(antSprite(s.col, 0), -16, -16, 32, 32); ctx.restore(); } }
   if (G.fast){ const k = Math.min(1, G.fastT * 4); ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = '#ffb43a'; rr(HOLE.x + 50, HOLE.y - 16, 96, 32, 16); ctx.fill(); ctx.fillStyle = '#4a2a08'; ctx.font = '900 18px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('⏩ 倍速', HOLE.x + 98, HOLE.y + 1); ctx.restore(); }
   // アリ
-  const fr = Math.floor(G.time * 14) % 2;
+  const fr = Math.floor(G.time * 14) % 2; const AS = Math.max(24, Math.min(40, G.cs * 2.6));   // アリの大きさはマスに合わせる（細かい絵では小さく）
   for (const a of G.ants){ const sp = antSprite(a.col, (fr + (a.ph > 3 ? 1 : 0)) % 2);
-    ctx.save(); ctx.translate(a.x + Math.sin(G.time * 9 + a.ph) * 1.2, a.y); ctx.rotate(a.ang); if (a.st === 1) ctx.rotate(Math.sin(a.t * 60) * 0.25); ctx.drawImage(sp, -20, -20, 40, 40);
+    ctx.save(); ctx.translate(a.x + Math.sin(G.time * 9 + a.ph) * 1.2, a.y); ctx.rotate(a.ang); if (a.st === 1) ctx.rotate(Math.sin(a.t * 60) * 0.25); ctx.drawImage(sp, -AS / 2, -AS / 2, AS, AS);
     if (a.st === 2){ const c = COL[a.col] || a.col; const s = Math.max(6, Math.min(13, G.cs * 0.7)); ctx.fillStyle = shade(c, 0.7); ctx.fillRect(-7 - s / 2, -s / 2 + 1, s + 1, s + 1); ctx.fillStyle = c; ctx.fillRect(-7 - s / 2, -s / 2, s, s); }   // 背中にかついで運ぶ（顔は隠さない）
     ctx.restore(); }
   for (const p of G.parts){ ctx.globalAlpha = 1 - p.t / 0.4; ctx.fillStyle = p.col; ctx.fillRect(p.x, p.y, p.s, p.s); } ctx.globalAlpha = 1;
@@ -940,8 +997,16 @@ fit();
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
 if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
+// 動作確認用: ?sim=17 で、その面の並び10通りについて各シミュレーション（C=慎重 A=せっかち I=少しずつ、小文字=ランダム混じり）の合否を title に出す
+if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = levelSpec(lv); const R = mulberry32(5); let k = spec.k, ras = rasterPic(spec.food, k);
+  const { W, H, g } = ras; applyDetail(g, W, H, spec.detail); spec.chunk = Math.max(spec.chunk, blockCount(g) / 36); const out = [];
+  for (let v = 0; v < 10; v++){ const s = buildStacks(g, W, H, Object.assign({}, spec, { shuffle: Math.max(0, spec.shuffle - Math.floor(v / 3)) }), R); const r = [];
+    for (const [m, L] of [['careful', 'C'], ['aggressive', 'A'], ['interleave', 'I']]) r.push(simulate(g, W, H, s, m) ? L : '-');
+    for (const [m, L] of [['careful', 'c'], ['aggressive', 'a'], ['interleave', 'i']]) r.push(simulate(g, W, H, s, m, R) ? L : '-');
+    out.push(r.join('')); }
+  document.title = 'lv' + lv + ' ' + spec.food.name + ' d' + spec.detail + ' n' + blockCount(g) + ' ' + out.join(' '); }
 // 動作確認用: ?colors=76 で各面の「名前:色数:ブロック数:次の名画のブロック数」を title に出す
-if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit)); } document.title = out.join(' '); }
+if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit) + ':d' + Lx.detail + ':' + Lx.W + 'x' + Lx.H + ':t' + Lx.tries + (Lx.valid ? '' : 'X')); } document.title = out.join(' '); }
 if (Q.get('lv')){ startLevel(parseInt(Q.get('lv'), 10) || 1, parseInt(Q.get('seed') || '1', 10)); } else showTitle();
 if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let best = -1, bv = -1;
       // ふつうの人の打ち方: 届くブロックが多い色を送る。どの壺も届かないときは、アリが動いている間は待ち、止まったら「次の壺が届く列」を退かす
