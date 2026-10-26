@@ -369,27 +369,67 @@ const PAINTINGS = [
      .c(7.6,10,0.45,COL.black).c(10.4,10,0.45,COL.black).e(9,13,1,0.5,COL.red);
   }}
 ];
-// 出す順: 名画以外の35種は「基準サイズでのブロック数が少ない順」（1周に同じ絵は1回）。
-// 名画（大きくて手ごわい）は10面から42面まで等間隔に散らす（10・15・21・26・31・37・42面＝連続しない）
-const PICS = (() => {
-  const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS].map(p => { const P = new Pic(); p.draw(P); return { p, n: P.raster(p.bw, p.bh, 1).g.filter(v => v).length }; });
+for (const p of PAINTINGS) p.paint = true;
+function rasterPic(p, k){ const P = new Pic(); p.draw(P); return P.raster(p.bw, p.bh, k); }
+function blockCount(g){ let n = 0; for (const v of g) if (v) n++; return n; }
+// 色を増やす（16面から1色・31面から2色）: いちばん多い色（次いで2番目）を右下側の半分だけ別の濃さにする（陰影のように見える）
+function applyExtras(g, W, H, extra){
+  if (!extra) return g;
+  const cnt = {}; for (const v of g) if (v) cnt[v] = (cnt[v] || 0) + 1;
+  const order = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]); const used = order.map(k => COL[k] || k);
+  for (let e = 0; e < extra && e < order.length; e++){
+    const src = order[e]; const nc = variantColor(COL[src] || src, used); if (!nc) continue; used.push(nc);
+    const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src) cells.push(i);
+    const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;
+    cells.sort((a, b) => diag(a) - diag(b)); const th = diag(cells[Math.floor(cells.length / 2)]);
+    for (const i of cells) if (diag(i) >= th) g[i] = nc;
+  }
+  return g;
+}
+function picColors(p, k, extra){ const { W, H, g } = rasterPic(p, k); applyExtras(g, W, H, extra); return new Set(g.filter(v => v)).size; }
+// 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画は10面から最後まで等間隔（連続しない）
+function buildOrder(filter){
+  const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
   base.sort((a, b) => a.n - b.n);
-  const total = base.length + PAINTINGS.length, first = 10, last = total;
-  const at = new Set(PAINTINGS.map((p, i) => first + Math.round(i * (last - first) / (PAINTINGS.length - 1))));
-  const out = []; let pi = 0, bi = 0; for (let lv = 1; lv <= total; lv++) out.push(at.has(lv) ? PAINTINGS[pi++] : base[bi++].p); return out; })();
+  const paints = PAINTINGS.filter(filter);
+  const total = base.length + paints.length, first = Math.min(10, total), last = total;
+  const at = new Set(paints.map((p, i) => first + Math.round(i * (last - first) / Math.max(1, paints.length - 1))));
+  const out = []; let pi = 0, bi = 0;
+  for (let lv = 1; lv <= total; lv++) out.push((at.has(lv) && pi < paints.length) ? paints[pi++] : (bi < base.length ? base[bi++].p : paints[pi++]));
+  return out;
+}
+const CYCLE1 = buildOrder(() => true);                                  // 1周目: 全42種
+const CYCLE2 = buildOrder(p => picColors(p, 1.5, 2) >= 6);              // 2周目以降: 色数（追加色込み）が5以下の絵は出さない
+const PICS = CYCLE1;
+function levelPos(lv){ // レベル → 周・周内の位置・その周の並び
+  if (lv <= CYCLE1.length) return { cyc: 0, idx: lv - 1, order: CYCLE1 };
+  const r = lv - CYCLE1.length - 1; return { cyc: 1 + Math.floor(r / CYCLE2.length), idx: r % CYCLE2.length, order: CYCLE2 };
+}
+const limitCache = new Map();
+function nextPaintingLimit(pos){ // 周内で次に出る名画のブロック数（名画以外はこれより少なくする）
+  const { cyc, idx, order } = pos; let j = idx + 1; while (j < order.length && !order[j].paint) j++;
+  if (j >= order.length) return null; const key = cyc + ':' + order.length + ':' + j; if (limitCache.has(key)) return limitCache.get(key);
+  const p = order[j]; const k = Math.min(cyc >= 1 ? 1.5 : 1, MAXDIM / Math.max(p.bw, p.bh));
+  const n = blockCount(rasterPic(p, k).g); limitCache.set(key, n); return n;
+}
 // ---------- レベル生成 ----------
 const NCOL = 5, NSLOT = 5;
 const MAXDIM = 36;
 function levelSpec(lv){
-  const idx = (lv - 1) % PICS.length, cyc = Math.floor((lv - 1) / PICS.length);
-  const food = PICS[idx];
-  // 1周目は基準サイズ（＝ブロック数が少ない順がそのまま成り立つ）、同じ絵が2回目以降に出るときは1.5倍（最大36マスで頭打ち＝3周目は2周目と同じ）
-  let k = cyc >= 1 ? 1.5 : 1;
-  k = Math.min(k, MAXDIM / Math.max(food.bw, food.bh));
+  const pos = levelPos(lv), { cyc, idx } = pos; const food = pos.order[idx]; const inLv = idx + 1;
+  // 1周目は基準サイズ、同じ絵が2回目以降に出るときは1.5倍（最大36マスで頭打ち＝3周目は2周目と同じ）
+  const baseK = Math.min(cyc >= 1 ? 1.5 : 1, MAXDIM / Math.max(food.bw, food.bh));
+  let k = baseK, limit = null;
+  if (!food.paint){
+    // 名画以外は周の6面・11面・16面…と5面ごとにブロック数を2割ずつ増やす（ただし次に出る名画より少なく＝makeLevelで抑える）
+    const step = inLv >= 6 ? Math.floor((inLv - 1) / 5) : 0;
+    k = Math.min(MAXDIM / Math.max(food.bw, food.bh), baseK * Math.sqrt(1 + 0.2 * step));
+    limit = nextPaintingLimit(pos);
+  }
   const noise = Math.max(0, Math.min(0.05, (lv - 4) * 0.0025));         // 5面目からまだら
   const shuffle = Math.min(7, 1 + Math.floor((lv - 1) / 4));            // 山札の混ぜ具合
   const chunk = 22 + Math.min(18, lv * 0.6);                              // 壺1つの平均アリ数
-  return { food, k, noise, shuffle, chunk };
+  return { food, k, baseK, limit, noise, shuffle, chunk };
 }
 
 // 外（リング）から届く範囲を測る。sx: スタート列（下のリングのどのセルから入るか）。
@@ -488,21 +528,12 @@ function solvable(grid, W, H, stacks0){
 
 function makeLevel(lv, seed){
   const spec = levelSpec(lv); const R = mulberry32(seed);
-  const P = new Pic(); spec.food.draw(P);
-  const { W, H, g } = P.raster(spec.food.bw, spec.food.bh, spec.k);
-  // 16面から色を1つ、31面から2つ増やす: いちばん多い色（次いで2番目に多い色）を、右下側の半分だけ別の濃さの色にする（陰影のように見える）
-  const extra = lv >= 31 ? 2 : lv >= 16 ? 1 : 0;
-  if (extra){
-    const cnt = {}; for (const v of g) if (v) cnt[v] = (cnt[v] || 0) + 1;
-    const order = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]); const used = order.map(k => COL[k] || k);
-    for (let e = 0; e < extra && e < order.length; e++){
-      const src = order[e]; const nc = variantColor(COL[src] || src, used); if (!nc) continue; used.push(nc);
-      const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src) cells.push(i);
-      const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;
-      cells.sort((a, b) => diag(a) - diag(b)); const th = diag(cells[Math.floor(cells.length / 2)]);
-      for (const i of cells) if (diag(i) >= th) g[i] = nc;
-    }
-  }
+  let k = spec.k, ras = rasterPic(spec.food, k);
+  // 次に出る名画のブロック数以上になっていたら、基準サイズまでの範囲で少しずつ縮める
+  while (spec.limit != null && blockCount(ras.g) >= spec.limit && k > spec.baseK + 1e-6){ k = Math.max(spec.baseK, k - 0.02); ras = rasterPic(spec.food, k); }
+  const { W, H, g } = ras;
+  // 16面から色を1つ、31面から2つ増やす
+  applyExtras(g, W, H, lv >= 31 ? 2 : lv >= 16 ? 1 : 0);
   // まだら: 塗ってあるセルの一部を絵の中の別の色に置き換える（外周2マスは触らない＝輪郭を残す）
   if (spec.noise > 0){
     const cols = [...new Set(g.filter(v => v))];
@@ -517,7 +548,7 @@ function makeLevel(lv, seed){
     if (solvable(g, W, H, s)){ stacks = s; break; }
     if (tries === 23) stacks = s;
   }
-  return { lv, seed, name: spec.food.name, W, H, grid: g, stacks, total: g.filter(v => v).length };
+  return { lv, seed, name: spec.food.name, W, H, grid: g, stacks, total: blockCount(g), k, limit: spec.limit };
 }
 // ---------- 画面の配置（論理座標） ----------
 const PLATE = { x: 28, y: 76, w: 484, h: 460, pad: 16 };
@@ -547,7 +578,7 @@ function startLevel(lv, seed){
     stacks: L.stacks.map(s => s.map(t => ({ col: t.col, n: t.n }))),
     slots: Array.from({ length: NSLOT }, () => null),   // {col,n,tNext,sx,F,dirty,arr}
     reserved: new Uint8Array(L.W * L.H), ants: [], parts: [], flying: [], colOff: new Array(NCOL).fill(0),
-    shake: 0, sent: 0, time: 0, stuckT: 0, winT: 0, rip: [], fast: false, fastT: 0, ret: null, retDirty: true
+    shake: 0, sent: 0, time: 0, stuckT: 0, winT: 0, rip: [], fast: false, fastT: 0, autoT: 0, ret: null, retDirty: true
   };
   boardDirty = true; mode = 'play'; hideOv();
   try { if (lv > bestLv){ bestLv = lv; } localStorage.setItem('bh_level', String(bestLv)); } catch (e) {}
@@ -626,6 +657,10 @@ function burst(x, y, col){ for (let j = 0; j < 4; j++) G.parts.push({ x, y, vx: 
 function update(dt){
   if (mode !== 'play') return;
   // 壺を全部最前列（枠）に並べ終えたら、もう操作は無い＝アリを倍速にする
+  // 残りの壺が空いた枠の数以下になったら、自動で枠に入れていく（→山札が空になり倍速でクリアへ）
+  const remain = G.stacks.reduce((a, s) => a + s.length, 0);
+  const free = G.slots.filter((s, k) => !s && !G.flying.some(f => f.slot === k)).length;
+  if (remain > 0 && remain <= free){ G.autoT -= dt; if (G.autoT <= 0){ const i = G.stacks.findIndex(s => s.length); if (i >= 0) tapColumn(i); G.autoT = 0.12; } }
   // 一度倍速になったらクリア（または詰み）までそのまま（枠が空になっても戻さない）
   const wasFast = G.fast; G.fast = G.fast || (G.stacks.every(s => s.length === 0) && G.flying.length === 0);
   if (G.fast && !wasFast){ G.fastT = 0; click(); }
@@ -800,6 +835,7 @@ function showHelp(back){
     <b>②</b> 壺からアリが出て、絵の<b>外側から届く</b>同じ色のブロックだけを食べて穴に運びます。数字は残りのアリの数。<br>
     <b>③</b> 囲まれているブロックは食べられません。5つの枠が「食べる物がない色」で埋まるとお手上げ。<br>
     <b>④</b> 全部食べたらクリア。レベルが上がるほど絵が大きく、まだらになります。<br>
+    <b>⑤</b> 残りの壺が空いた枠の数以下になると、自動で枠に入ってアリが倍速になります。<br>
     <b>PC</b>は数字キー <b>1〜5</b> でも左から順に送れます。</div>
     <button class="btn go" id="bBack">もどる</button>`);
   document.getElementById('bBack').onclick = back;
@@ -838,12 +874,20 @@ fit();
 // ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
-if (Q.get('order')) document.title = PICS.map((p, i) => (i + 1) + ':' + p.name + '(' + makeLevel(i + 1, 1).total + ')').join(' ');   // 動作確認用: 出る順とブロック数
+// 動作確認用: ?colors=76 で各面の「名前:色数:ブロック数:次の名画のブロック数」を title に出す
+if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit)); } document.title = out.join(' '); }
 if (Q.get('lv')){ startLevel(parseInt(Q.get('lv'), 10) || 1, parseInt(Q.get('seed') || '1', 10)); } else showTitle();
 if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let best = -1, bv = -1;
-      for (let i = 0; i < NCOL; i++){ const t = G.stacks[i][0]; if (!t) continue; let v = 0; const F = field(G.grid, G.W, G.H, Math.floor(G.W / 2));
-        for (let r = 0; r < G.H; r++) for (let c = 0; c < G.W; c++) if (G.grid[r * G.W + c] === t.col && reach(F, G.grid, G.W, G.H, c, r)) v++; if (v > bv){ bv = v; best = i; } }
-      if (best >= 0 && G.slots.some(s => !s)) tapColumn(best); }
+      // ふつうの人の打ち方: 届くブロックが多い色を送る。どの壺も届かないときは、アリが動いている間は待ち、止まったら「次の壺が届く列」を退かす
+      const F = field(G.grid, G.W, G.H, Math.floor(G.W / 2));
+      const rc = col => { let v = 0; for (let r = 0; r < G.H; r++) for (let c = 0; c < G.W; c++) if (G.grid[r * G.W + c] === col && !G.reserved[r * G.W + c] && reach(F, G.grid, G.W, G.H, c, r)) v++; return v; };
+      for (let i = 0; i < NCOL; i++){ const t = G.stacks[i][0]; if (!t) continue; const v = rc(t.col); if (v > bv){ bv = v; best = i; } }
+      const free = G.slots.some((s, k) => !s && !G.flying.some(f => f.slot === k));
+      if (best >= 0 && free){
+        if (bv > 0) tapColumn(best);
+        else if (G.ants.length === 0 && G.flying.length === 0 && !G.slots.some(s => s && s.n > 0 && rc(s.col) > 0)){
+          let alt = -1; for (let i = 0; i < NCOL; i++){ const u = G.stacks[i][1]; if (u && rc(u.col) > 0){ alt = i; break; } }
+          tapColumn(alt >= 0 ? alt : best); } } }
     else if (mode === 'clear'){ document.title = 'CLEAR lv' + L.lv + ' sent' + G.sent + ' t' + G.time.toFixed(1); if (Q.get('next')) startLevel(L.lv + 1, 1); }
     else if (mode === 'stuck'){ document.title = 'STUCK lv' + L.lv + ' left' + G.left; } };
   if (Q.get('sync')){ // 同期的に回す（ヘッドレス確認用）: &to=13 で連続、&stopAt=6 でその時刻の画面で止める
