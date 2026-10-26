@@ -79,7 +79,7 @@ const COL = {
   red:'#e84a3f', dkred:'#b3262b', orange:'#f5902c', yellow:'#f8d13a', green:'#4ec95a', dkgreen:'#2f8f3e',
   blue:'#3d8ef0', lblue:'#74d4f6', purple:'#9a5ce6', pink:'#f792b8', brown:'#8d5a2b', dkbrown:'#5c3317',
   lbrown:'#d6a26a', tan:'#f2dcae', white:'#fbf8f1', black:'#3b3b3b', mint:'#7de8c9', salmon:'#ff8f5a', cream:'#fff0c2',
-  gray:'#a3a9b1', dkgray:'#626a74', navy:'#2c4f9e'
+  gray:'#a3a9b1', dkgray:'#626a74', navy:'#2c4f9e', dkorange:'#d8661c'
 };
 // 既存の色と見分けがつく「同系の別の濃さ」を1つ返す（明るい色は暗く、暗い色は明るく。近すぎる候補は飛ばす）
 function variantColor(hex, used){
@@ -369,6 +369,66 @@ const PAINTINGS = [
      .c(7.6,10,0.45,COL.black).c(10.4,10,0.45,COL.black).e(9,13,1,0.5,COL.red);
   }}
 ];
+// ---------- 動物11種（顔を大きく。白い動物は灰色の縁取り） ----------
+const ANIMALS = [
+  { name:'ねこ', bw:24, bh:22, draw(P){
+    P.p([[3,10],[5,1],[10,7]], COL.orange).p([[21,10],[19,1],[14,7]], COL.orange).p([[4.6,8.4],[5.5,3.2],[8.4,6.6]], COL.pink).p([[19.4,8.4],[18.5,3.2],[15.6,6.6]], COL.pink)
+     .e(12,13,10,8.5,COL.orange).l(12,4.8,12,8,1.2,COL.dkorange).l(8.5,5.8,9.5,8.4,1.2,COL.dkorange).l(15.5,5.8,14.5,8.4,1.2,COL.dkorange).l(2.6,13,5,13,1,COL.dkorange).l(19,13,21.4,13,1,COL.dkorange)
+     .e(8.5,12,1.7,2.3,COL.white).e(15.5,12,1.7,2.3,COL.white).e(8.5,12.3,0.8,1.6,COL.black).e(15.5,12.3,0.8,1.6,COL.black)
+     .p([[11,15],[13,15],[12,16.3]], COL.pink).l(12,16.3,10.5,17.5,0.6,COL.black).l(12,16.3,13.5,17.5,0.6,COL.black)
+     .l(2,15.3,7,15.8,0.5,COL.black).l(2,17.6,7,16.8,0.5,COL.black).l(22,15.3,17,15.8,0.5,COL.black).l(22,17.6,17,16.8,0.5,COL.black);
+  }},
+  { name:'いぬ', bw:24, bh:22, draw(P){
+    P.e(3.5,12,3.2,6.5,COL.dkbrown).e(20.5,12,3.2,6.5,COL.dkbrown).e(12,12,9,8.5,COL.lbrown).c(15.5,9.5,2.7,COL.brown).e(12,15.5,5,3.5,COL.white)
+     .c(8.5,10,1.3,COL.black).c(15.5,10,1.3,COL.black).c(8.9,9.6,0.45,COL.white).c(15.9,9.6,0.45,COL.white)
+     .e(12,14,1.8,1.3,COL.black).l(12,15.3,12,16.5,0.6,COL.black).e(12,18.2,1.6,1.4,COL.pink);
+  }},
+  { name:'くま', bw:24, bh:23, draw(P){
+    P.c(5,5,3.5,COL.brown).c(19,5,3.5,COL.brown).c(5,5,1.8,COL.tan).c(19,5,1.8,COL.tan).c(12,12.5,9.5,COL.brown).e(12,15.5,4.5,3.2,COL.tan)
+     .c(8.5,11,1.2,COL.black).c(15.5,11,1.2,COL.black).e(12,14.3,1.7,1.2,COL.black).l(12,15.5,12,16.6,0.5,COL.black)
+     .p([[8,19.5],[11.5,21],[8,22.5]], COL.red).p([[16,19.5],[12.5,21],[16,22.5]], COL.red).c(12,21,1.1,COL.red);
+  }},
+  { name:'うさぎ', bw:22, bh:26, draw(P){
+    for (const x of [7.5, 14.5]) P.e(x,6,2.7,6,COL.gray).e(x,6,1.9,5.3,COL.white).e(x,6.3,0.9,3.8,COL.pink);
+    P.e(11,17,8.6,7.6,COL.gray).e(11,17,7.7,6.7,COL.white).c(8,16,1.1,COL.black).c(14,16,1.1,COL.black)
+     .p([[10,18.5],[12,18.5],[11,19.6]], COL.pink).l(11,19.6,9.8,20.6,0.5,COL.black).l(11,19.6,12.2,20.6,0.5,COL.black).c(5.8,19,1.1,COL.pink).c(16.2,19,1.1,COL.pink)
+     .p([[13.5,20.2],[16.8,19],[19.8,25]], COL.orange).e(14,19.2,1.7,1,COL.green).e(15.4,18,1,1.6,COL.green);   // にんじん（色数を増やす）
+  }},
+  { name:'ぶた', bw:24, bh:22, draw(P){
+    P.p([[3,8],[5,1.5],[9,6]], COL.pink).p([[21,8],[19,1.5],[15,6]], COL.pink).e(12,12.5,10,8.5,COL.pink)
+     .e(8,10,1.6,1.9,COL.white).e(16,10,1.6,1.9,COL.white).c(8.3,10.2,0.8,COL.black).c(15.7,10.2,0.8,COL.black)
+     .e(12,14.5,4.5,3,COL.salmon).e(10.5,14.5,0.8,1.1,COL.black).e(13.5,14.5,0.8,1.1,COL.black);
+  }},
+  { name:'パンダ', bw:24, bh:23, draw(P){
+    P.c(5,5,3.4,COL.black).c(19,5,3.4,COL.black).c(12,12.5,10,COL.gray).c(12,12.5,9.2,COL.white)
+     .e(8,11.5,2.6,3.2,COL.black).e(16,11.5,2.6,3.2,COL.black).c(8.3,11.5,1.1,COL.white).c(15.7,11.5,1.1,COL.white).c(8.5,11.5,0.5,COL.black).c(15.5,11.5,0.5,COL.black)
+     .e(12,15.5,1.5,1.1,COL.black).l(12,16.5,10.8,17.6,0.5,COL.black).l(12,16.5,13.2,17.6,0.5,COL.black).c(4.5,15,1.2,COL.pink).c(19.5,15,1.2,COL.pink);
+  }},
+  { name:'カエル', bw:24, bh:22, draw(P){
+    P.c(6.5,5,4,COL.green).c(17.5,5,4,COL.green).c(6.5,5,2.6,COL.white).c(17.5,5,2.6,COL.white).c(6.5,5,1.3,COL.black).c(17.5,5,1.3,COL.black)
+     .e(12,13,11,8,COL.green).e(12,17,7,3.5,COL.mint).l(5,13,8,14.5,0.8,COL.dkgreen).l(8,14.5,16,14.5,0.8,COL.dkgreen).l(16,14.5,19,13,0.8,COL.dkgreen)
+     .c(10.5,10.5,0.6,COL.dkgreen).c(13.5,10.5,0.6,COL.dkgreen).c(4,16,1.3,COL.pink).c(20,16,1.3,COL.pink);
+  }},
+  { name:'ライオン', bw:26, bh:26, draw(P){
+    P.c(13,13,12.5,COL.brown).c(13,13.5,8.5,COL.orange).c(7,7,2.4,COL.orange).c(19,7,2.4,COL.orange).e(13,16.5,4.5,3,COL.tan)
+     .c(9.5,12,1.2,COL.black).c(16.5,12,1.2,COL.black).e(13,15,1.6,1.1,COL.black).l(13,16,11.8,17.2,0.5,COL.black).l(13,16,14.2,17.2,0.5,COL.black);
+  }},
+  { name:'ペンギン', bw:20, bh:26, draw(P){
+    P.e(10,15,8,10,COL.black).e(2.5,15,1.8,5,COL.black).e(17.5,15,1.8,5,COL.black).e(10,16,5.5,7.5,COL.white).c(10,6.5,5.5,COL.black)
+     .e(7.5,6.5,2.2,2.6,COL.white).e(12.5,6.5,2.2,2.6,COL.white).c(7.8,6.5,0.8,COL.black).c(12.2,6.5,0.8,COL.black).p([[8.5,8],[11.5,8],[10,10.2]], COL.orange)
+     .r(5.5,10.6,14.5,12.3,COL.red).p([[12.5,12.3],[15,12.3],[14.5,16]], COL.red).e(7,25,2.4,1.1,COL.orange).e(13,25,2.4,1.1,COL.orange);
+  }},
+  { name:'ひよこ', bw:22, bh:22, draw(P){
+    P.c(11,1.9,1.2,COL.yellow).e(11,14,8.5,7,COL.yellow).c(11,7.5,5.5,COL.yellow).e(5,14,2.6,3.6,COL.cream)
+     .c(9,7,0.9,COL.black).c(13,7,0.9,COL.black).p([[9.8,9],[12.2,9],[11,10.6]], COL.orange).c(7.5,9,0.9,COL.pink).c(14.5,9,0.9,COL.pink)
+     .r(7.5,20.5,9.5,21.6,COL.orange).r(12.5,20.5,14.5,21.6,COL.orange);
+  }},
+  { name:'さかな', bw:26, bh:18, draw(P){
+    P.p([[19,9],[25.5,3],[25.5,15]], COL.blue).p([[7,4],[12,0.8],[14,4.5]], COL.orange).p([[9,14],[12,17],[14,13.5]], COL.orange)
+     .e(11,9,10,6.5,COL.blue).e(11,11,7,3.5,COL.lblue).l(8,4,8,14,0.8,COL.navy).l(12,3.2,12,14.8,0.8,COL.navy)
+     .c(4.5,8,1.6,COL.white).c(4.8,8,0.8,COL.black).l(1.5,10.5,3,10.5,0.6,COL.black);
+  }}
+];
 for (const p of PAINTINGS) p.paint = true;
 function rasterPic(p, k){ const P = new Pic(); p.draw(P); return P.raster(p.bw, p.bh, k); }
 function blockCount(g){ let n = 0; for (const v of g) if (v) n++; return n; }
@@ -387,28 +447,32 @@ function applyExtras(g, W, H, extra){
   return g;
 }
 function picColors(p, k, extra){ const { W, H, g } = rasterPic(p, k); applyExtras(g, W, H, extra); return new Set(g.filter(v => v)).size; }
-// 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画は10面から最後まで等間隔（連続しない）
-function buildOrder(filter){
-  const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
+// 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
+function buildOrder(filter, withPaintings){
+  const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
   base.sort((a, b) => a.n - b.n);
-  const paints = PAINTINGS.filter(filter);
+  const paints = withPaintings ? PAINTINGS.slice() : [];
   const total = base.length + paints.length, first = Math.min(10, total), last = total;
   const at = new Set(paints.map((p, i) => first + Math.round(i * (last - first) / Math.max(1, paints.length - 1))));
   const out = []; let pi = 0, bi = 0;
   for (let lv = 1; lv <= total; lv++) out.push((at.has(lv) && pi < paints.length) ? paints[pi++] : (bi < base.length ? base[bi++].p : paints[pi++]));
   return out;
 }
-const CYCLE1 = buildOrder(() => true);                                  // 1周目: 全42種
-const CYCLE2 = buildOrder(p => picColors(p, 1.5, 2) >= 6);              // 2周目以降: 色数（追加色込み）が5以下の絵は出さない
+// 1周目: 名画以外の全部（名画は小さいとそう見えないので1周目には出さない）
+const CYCLE1 = buildOrder(() => true, false);
+// 2周目以降: 単純すぎる絵（基準200ブロック未満）と色数（追加色込み）5以下の絵は出さず、名画は1.5倍になったここから出す
+const CYCLE2 = buildOrder(p => blockCount(rasterPic(p, 1).g) >= 200 && picColors(p, 1.5, 2) >= 6, true);
 const PICS = CYCLE1;
+let PIC_OVERRIDE = null;   // 動作確認用（?pic=名前）
 function levelPos(lv){ // レベル → 周・周内の位置・その周の並び
   if (lv <= CYCLE1.length) return { cyc: 0, idx: lv - 1, order: CYCLE1 };
   const r = lv - CYCLE1.length - 1; return { cyc: 1 + Math.floor(r / CYCLE2.length), idx: r % CYCLE2.length, order: CYCLE2 };
 }
 const limitCache = new Map();
-function nextPaintingLimit(pos){ // 周内で次に出る名画のブロック数（名画以外はこれより少なくする）
-  const { cyc, idx, order } = pos; let j = idx + 1; while (j < order.length && !order[j].paint) j++;
-  if (j >= order.length) return null; const key = cyc + ':' + order.length + ':' + j; if (limitCache.has(key)) return limitCache.get(key);
+function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名画以外はこれより少なくする）。周内に無ければ次の周の最初の名画
+  let { cyc, idx, order } = pos; let j = idx + 1; while (j < order.length && !order[j].paint) j++;
+  if (j >= order.length){ cyc += 1; order = CYCLE2; j = 0; while (j < order.length && !order[j].paint) j++; if (j >= order.length) return null; }
+  const key = cyc + ':' + order.length + ':' + j; if (limitCache.has(key)) return limitCache.get(key);
   const p = order[j]; const k = Math.min(cyc >= 1 ? 1.5 : 1, MAXDIM / Math.max(p.bw, p.bh));
   const n = blockCount(rasterPic(p, k).g); limitCache.set(key, n); return n;
 }
@@ -416,7 +480,8 @@ function nextPaintingLimit(pos){ // 周内で次に出る名画のブロック�
 const NCOL = 5, NSLOT = 5;
 const MAXDIM = 36;
 function levelSpec(lv){
-  const pos = levelPos(lv), { cyc, idx } = pos; const food = pos.order[idx]; const inLv = idx + 1;
+  const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
+  if (PIC_OVERRIDE) return { food, k: 1, baseK: 1, limit: null, noise: 0, shuffle: 1, chunk: 30 };
   // 1周目は基準サイズ、同じ絵が2回目以降に出るときは1.5倍（最大36マスで頭打ち＝3周目は2周目と同じ）
   const baseK = Math.min(cyc >= 1 ? 1.5 : 1, MAXDIM / Math.max(food.bw, food.bh));
   let k = baseK, limit = null;
@@ -874,6 +939,7 @@ fit();
 // ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
+if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
 // 動作確認用: ?colors=76 で各面の「名前:色数:ブロック数:次の名画のブロック数」を title に出す
 if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit)); } document.title = out.join(' '); }
 if (Q.get('lv')){ startLevel(parseInt(Q.get('lv'), 10) || 1, parseInt(Q.get('seed') || '1', 10)); } else showTitle();
