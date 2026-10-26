@@ -84,6 +84,7 @@ const COL = {
 // 既存の色と見分けがつく「同系の別の濃さ」を1つ返す（明るい色は暗く、暗い色は明るく。近すぎる候補は飛ばす）
 const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
 const colorDist = (a, b) => { const p = rgbOf(a), q = rgbOf(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+const lumOf = h => { const [r, g, b] = rgbOf(h); return 0.3 * r + 0.59 * g + 0.11 * b; };
 function variantColor(hex, used, dir){ // dir: 'dark' | 'light' | 省略＝明るい色は暗く、暗い色は明るく
   const [r, g, b] = rgbOf(hex); const lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
   const dark = [0.74, 0.6, 0.48, 0.36], light = [1.3, 1.45, 1.75, 2.1];
@@ -448,33 +449,47 @@ function applyExtras(g, W, H, extra){
   return g;
 }
 function picColors(p, k, extra){ const { W, H, g } = rasterPic(p, k); applyExtras(g, W, H, extra); return new Set(g.filter(v => v)).size; }
-// 絵の複雑さ（レベルで段階的に上げる）: d1=1色を濃淡2段階に / d2=2色 / d3=2色＋輪郭線＋いちばん多い色に網点 / d4=3色（最多色は明・基本・暗の3段階）＋輪郭線＋2色に網点
+// 絵の複雑さ（レベルで段階的に上げる）: d1=1色に陰影 / d2=2色 / d3=2色＋輪郭線＋いちばん多い色に網点 / d4=3色（最多色は影＋光）＋輪郭線＋2色に網点
+// 陰影は「絵の縁ぞい」に付ける（暗い色なら右下側の影、明るい色なら左上側の光）。面積はその色の約4分の1まで＝半分にすると何の絵かわからなくなる（パンダなど）ため
 function applyDetail(g, W, H, d){
   if (!d) return g;
   const cnt = {}; for (const v of g) if (v) cnt[v] = (cnt[v] || 0) + 1;
   const order = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]); const used = order.map(k => COL[k] || k);
-  const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;
-  const tones = d >= 4 ? 3 : d >= 2 ? 2 : 1; const tone = {};   // tone[元の色] = 濃淡分けで作った色
+  const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;   // 0（左上）〜2（右下）
+  // 輪郭線（d3以上）になるセル＝絵の外に接するセル。陰影はその内側に付ける
+  const edge = new Set();
+  if (d >= 3) for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (!g[i]) continue;
+    for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const cc = c + dc, rr = r + dr; if (cc < 0 || rr < 0 || cc >= W || rr >= H || !g[rr * W + cc]){ edge.add(i); break; } } }
+  const isOut = (c, r) => c < 0 || r < 0 || c >= W || r >= H || !g[r * W + c] || edge.has(r * W + c);
+  // 輪郭線の色は陰影の色より先に決める（黒い目などがある絵で、陰影に濃い色を取られて輪郭線が無くなると、縁が元の色のまま残って「縁の色の壺が先に5個並ぶ→縁を食べ切ると陰影に囲まれて届かない」詰みになる）
+  let oc = null;
+  if (d >= 3){ const main = COL[order[0]] || order[0];
+    oc = [shade(main, 0.4), '#2b2f55', '#4a2a1a', '#1f1f1f', '#1b2a6b', '#0b1f4f', '#143a66', '#4a1a2a', '#1a3a2a'].find(c => used.every(u => colorDist(u, c) >= 52)) || null;
+    if (oc) used.push(oc); }
+  applyDetail.noOutline = d >= 3 && !oc;   // 動作確認用
+  // sgn=+1 は右下側（影）、-1 は左上側（光）。その方向に何マスで絵の外に出るか（1〜4、遠ければ5）が浅く、その方向の端に近いセルから順に、その色の frac 分だけ塗り替える
+  const shadeCells = (src, nc, sgn, frac) => {
+    const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src && !edge.has(i)) cells.push(i);
+    const depth = i => { const c = i % W, r = Math.floor(i / W);
+      for (let k = 1; k <= 4; k++) for (let t = 0; t <= k; t++) if (isOut(c + sgn * k, r + sgn * t) || isOut(c + sgn * t, r + sgn * k)) return k;
+      return 5; };
+    const score = new Map(); for (const i of cells) score.set(i, depth(i) + (sgn > 0 ? 2 - diag(i) : diag(i)));
+    cells.sort((a, b) => score.get(a) - score.get(b));
+    for (const i of cells.slice(0, Math.round(cells.length * frac))) g[i] = nc;
+  };
+  const tones = d >= 4 ? 3 : d >= 2 ? 2 : 1; const tone = {};   // tone[元の色] = 陰影で作った色
   for (let e = 0; e < tones && e < order.length; e++){
     const src = order[e], hex = COL[src] || src;
-    const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src) cells.push(i);
-    cells.sort((a, b) => diag(a) - diag(b));
-    if (d >= 4 && e === 0){ // 最多色は上から 明・基本・暗 の3段階
-      const dk = variantColor(hex, used, 'dark'); if (dk){ used.push(dk); tone[src] = dk; for (const i of cells.slice(Math.floor(cells.length * 2 / 3))) g[i] = dk; }
-      const lt = variantColor(hex, used, 'light'); if (lt){ used.push(lt); for (const i of cells.slice(0, Math.floor(cells.length / 3))) g[i] = lt; }
+    if (d >= 4 && e === 0){ // 最多色は右下に影＋左上に光
+      const dk = variantColor(hex, used, 'dark'); if (dk){ used.push(dk); tone[src] = dk; shadeCells(src, dk, 1, 0.25); }
+      const lt = variantColor(hex, used, 'light'); if (lt){ used.push(lt); shadeCells(src, lt, -1, 0.2); }
     } else {
       const nc = variantColor(hex, used); if (!nc) continue; used.push(nc); tone[src] = nc;
-      for (const i of cells.slice(Math.floor(cells.length / 2))) g[i] = nc;
+      shadeCells(src, nc, lumOf(nc) < lumOf(hex) ? 1 : -1, 0.25);
     }
   }
   if (d >= 3){ // 輪郭線: 外（空き）に接するセルを濃い線の色に
-    const main = COL[order[0]] || order[0];
-    const oc = [shade(main, 0.4), '#2b2f55', '#4a2a1a', '#1f1f1f'].find(c => used.every(u => colorDist(u, c) >= 52));
-    if (oc){ used.push(oc); const edge = [];
-      for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (!g[i]) continue;
-        let out = false; for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const cc = c + dc, rr = r + dr; if (cc < 0 || rr < 0 || cc >= W || rr >= H || !g[rr * W + cc]) out = true; }
-        if (out) edge.push(i); }
-      for (const i of edge) g[i] = oc; }
+    if (oc) for (const i of edge) g[i] = oc;
     // 網点: 多い色の中に格子状の点を打つ（d3は最多色だけ、d4は2色）。点の色はその色の濃淡分けで作った色を使い回す（孤立した色を増やさない＝詰まりにくい）
     const texN = d >= 4 ? 2 : 1;
     for (let e = 0; e < texN && e < order.length; e++){
@@ -511,7 +526,7 @@ function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名�
   let { cyc, idx, order } = pos; let j = idx + 1; while (j < order.length && !order[j].paint) j++;
   if (j >= order.length){ cyc += 1; order = CYCLE2; j = 0; while (j < order.length && !order[j].paint) j++; if (j >= order.length) return null; }
   const key = cyc + ':' + order.length + ':' + j; if (limitCache.has(key)) return limitCache.get(key);
-  const p = order[j]; const k = Math.min(cyc >= 1 ? 1.5 : 1, MAXDIM / Math.max(p.bw, p.bh));
+  const p = order[j]; const k = Math.min(cyc >= 1 ? 2 : 1, MAXDIM / Math.max(p.bw, p.bh));   // 2周目以降の名画は2倍（levelSpec と同じ）
   const n = blockCount(rasterPic(p, k).g); limitCache.set(key, n); return n;
 }
 // ---------- レベル生成 ----------
@@ -621,28 +636,29 @@ function simulate(grid, W, H, stacks0, mode, R){
     while (moved){ moved = false; m = reachAll(g, W, H);
       for (const s of slots){ if (s.n <= 0) continue; const rs = m[s.col] || []; if (!rs.length) continue;
         let take = Math.min(s.n, rs.length); if (mode === 'interleave') take = Math.max(1, Math.min(take, Math.ceil(rs.length * (0.2 + 0.8 * (R ? R() : 0.5)))));
-        for (let j = 0; j < take; j++) g[rs[j]] = 0; s.n -= take; left -= take; moved = true; ate = true; }
+        for (let j = 0; j < take; j++) g[rs[j]] = 0; m[s.col] = rs.slice(take); s.n -= take; left -= take; moved = true; ate = true; }   // 同じ色の壺が2つ枠にあるとき、食べた分を2重に数えない
       slots = slots.filter(s => s.n > 0);
       if (mode === 'interleave' && moved) break;
     }
     if (left <= 0) return true;
     if (mode === 'interleave' && ate) continue;
     m = reachAll(g, W, H); let [best, bv] = bestTop(m);
-    if (best < 0) return false;
+    const fail = () => { simulate.fail = { mode, left, slots: slots.map(s => s.col + 'x' + s.n), reach: Object.keys(m).map(c => c + ':' + m[c].length), tops: st.map(s => s.slice(0, 2).map(t => t.col + 'x' + t.n).join('/')) }; return false; };   // 動作確認用: 詰んだときの状態
+    if (best < 0) return fail();
     if (bv === 0){ // 届く色が無い: 空き枠があれば次の壺が届く色の列を1つ退かす
-      if (slots.length >= NSLOT) return false;
+      if (slots.length >= NSLOT) return fail();
       let alt = -1; for (let i = 0; i < NCOL; i++){ const u = st[i][1]; if (u && (m[u.col] || []).length > 0){ alt = i; break; } }
       best = alt >= 0 ? alt : best;
     }
-    if (slots.length >= NSLOT) return false;
+    if (slots.length >= NSLOT) return fail();
     slots.push(st[best].shift());
   }
   return left <= 0;
 }
-// 「せっかち」（空き枠を全部すぐ埋める）はまだら模様の孤立マスで必ず詰むので判定には使わない（人の遊び方としては極端）
+// 慎重・せっかち（空き枠を全部すぐ埋める）・少しずつ の3通り＋ランダム混じり3通りで解ける並びだけ通す
 function solvable(grid, W, H, stacks, R){
-  if (!simulate(grid, W, H, stacks, 'careful') || !simulate(grid, W, H, stacks, 'interleave')) return false;
-  for (let i = 0; i < 3; i++) if (!simulate(grid, W, H, stacks, ['careful', 'interleave', 'interleave'][i], R)) return false;   // ランダム混じりの打ち方3通り
+  for (const m of ['careful', 'aggressive', 'interleave']) if (!simulate(grid, W, H, stacks, m)) return false;
+  for (const m of ['careful', 'aggressive', 'interleave']) if (!simulate(grid, W, H, stacks, m, R)) return false;   // ランダム混じりの打ち方3通り
   return true;
 }
 
@@ -1003,10 +1019,11 @@ if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = leve
   for (let v = 0; v < 10; v++){ const s = buildStacks(g, W, H, Object.assign({}, spec, { shuffle: Math.max(0, spec.shuffle - Math.floor(v / 3)) }), R); const r = [];
     for (const [m, L] of [['careful', 'C'], ['aggressive', 'A'], ['interleave', 'I']]) r.push(simulate(g, W, H, s, m) ? L : '-');
     for (const [m, L] of [['careful', 'c'], ['aggressive', 'a'], ['interleave', 'i']]) r.push(simulate(g, W, H, s, m, R) ? L : '-');
-    out.push(r.join('')); }
+    out.push(r.join(''));
+    if (Q.get('dbg') && r[2] === '-' && !out.some(x => x.startsWith('{'))){ simulate(g, W, H, s, 'interleave'); out.push(JSON.stringify(simulate.fail)); } }
   document.title = 'lv' + lv + ' ' + spec.food.name + ' d' + spec.detail + ' n' + blockCount(g) + ' ' + out.join(' '); }
 // 動作確認用: ?colors=76 で各面の「名前:色数:ブロック数:次の名画のブロック数」を title に出す
-if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit) + ':d' + Lx.detail + ':' + Lx.W + 'x' + Lx.H + ':t' + Lx.tries + (Lx.valid ? '' : 'X')); } document.title = out.join(' '); }
+if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit) + ':d' + Lx.detail + ':' + Lx.W + 'x' + Lx.H + ':t' + Lx.tries + (Lx.valid ? '' : 'X') + (applyDetail.noOutline ? 'N' : '')); } document.title = out.join(' '); }   // N＝輪郭線の色が取れなかった面
 if (Q.get('lv')){ startLevel(parseInt(Q.get('lv'), 10) || 1, parseInt(Q.get('seed') || '1', 10)); } else showTitle();
 if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let best = -1, bv = -1;
       // ふつうの人の打ち方: 届くブロックが多い色を送る。どの壺も届かないときは、アリが動いている間は待ち、止まったら「次の壺が届く列」を退かす
@@ -1027,7 +1044,9 @@ if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let 
     try { for (let f = 0; f < 60 * 600; f++){ if (f % 24 === 0) bot(); update(1 / 60);
         if (stopAt && G.time >= stopAt) break;
         if (mode === 'clear' || mode === 'stuck'){ res.push('lv' + L.lv + (mode === 'clear' ? ':OK' : ':STUCK left' + G.left) + ' t' + G.time.toFixed(0) + ' n' + L.total + ' ' + G.W + 'x' + G.H + ' tiles' + L.stacks.flat().length);
-          if (mode === 'clear' && to && L.lv < to) startLevel(L.lv + 1, parseInt(Q.get('seed') || '1', 10)); else break; } }
+          if (mode === 'stuck' && Q.get('dbg')){ const m = reachAll(G.grid, G.W, G.H), rem = {}; for (const v of G.grid) if (v) rem[v] = (rem[v] || 0) + 1;   // 動作確認用: 詰んだときの枠・残り・届く数
+            res.push('slots=' + G.slots.map(s => s ? s.col + 'x' + s.n : '-').join(',') + ' remain=' + Object.keys(rem).map(c => c + ':' + rem[c] + '/' + ((m[c] || []).length)).join(',') + ' tops=' + G.stacks.map(s => s.slice(0, 2).map(t => t.col + 'x' + t.n).join('/')).join(' ')); }
+          if (to && L.lv < to) startLevel(L.lv + 1, parseInt(Q.get('seed') || '1', 10)); else break; } }   // 詰んでも次の面へ進む（範囲ぶんを一度に確認）
       if (!stopAt) document.title = res.join(' | ') || ('RUN lv' + L.lv + ' left' + G.left + ' t' + G.time.toFixed(0)); else { hideOv(); frozen = true; } }
     catch (e) { document.title = 'ERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]; }
   } else setInterval(bot, 400); }
