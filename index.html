@@ -112,17 +112,17 @@ function tint(hex, k, amt, dark){
   if (!amt) return shade(hex, k);
   const base = shade(hex, k), lc = labOf(base); let [h, s, l] = hslOf(base);
   if (Math.hypot(lc[1], lc[2]) < 12){ h = dark ? 225 : 48; s = Math.min(0.32, 0.08 + amt / 60); }   // 無彩色の判定は Lab の鮮やかさで（HSL の s は白に近いと大きく出る）
-  else { const dir = dark || amt >= 40 ? (h >= 45 && h < 240 ? 1 : -1) : (h > 60 && h <= 240 ? -1 : 1); h += dir * amt;   // 大きくずらす保険は光でも影と同じ向き（茶を黄緑に、青を水色にすると不自然）
-    if (amt < 40) s = Math.min(1, s * (dark ? Math.min(1.5, 1 + amt / 60) : 1 - amt / 120)); }   // 色相を大きくずらす保険の候補は鮮やかさを変えない（上げると蛍光色になる）
+  else { const dir = dark ? (h >= 45 && h < 240 ? 1 : -1) : (h > 60 && h <= 240 ? -1 : 1); h += dir * amt;
+    s = Math.min(1, s * (dark ? Math.min(1.5, 1 + amt / 60) : 1 - amt / 120)); }
   return hexOfHsl(h, s, l);
 }
 // 既存の色と見分けがつく（vdist が SEE 以上）いちばん控えめな「同系の別の濃さ」を1つ返す。dir: 'dark' | 'light' | 省略＝明るい色は暗く、暗い色は明るく
 function variantColor(hex, used, dir){
   const lum = lumOf(hex) / 255, lh = labOf(hex), neutral = Math.hypot(lh[1], lh[2]) < 12;   // 白・灰・黒は濃淡だけでは見分けにくい（白と灰と黒の間に2色は入らない）ので、最初から色味を付ける
-  // 候補は控えめな順。有彩色の最後の2つは濃さをあまり変えずに色相を大きくずらしたもの（黒がある絵の茶色など、濃くしても見分けがつかないときの保険）
-  const dark = (neutral ? [[0.72, 12], [0.62, 18], [0.5, 24], [0.4, 30], [0.3, 36]] : [[0.72, 0], [0.62, 12], [0.5, 18], [0.4, 24], [0.3, 30], [0.9, 40], [0.85, 55]]).map(([k, a]) => tint(hex, k, a, true));
-  const light = (neutral ? [[1.3, 12], [1.45, 18], [1.65, 24], [1.9, 30], [2.2, 36]] : [[1.3, 0], [1.45, 10], [1.65, 15], [1.9, 20], [2.2, 25], [1.1, 40], [1.15, 55]]).map(([k, a]) => tint(hex, k, a, false));
-  const ks = (dir === 'dark' ? dark : dir === 'light' ? light : lum > 0.55 ? [dark[0], dark[1], light[0], dark[2], light[1], dark[3], dark[4], dark[5], dark[6], light[5], light[6]] : [light[0], light[1], dark[0], light[2], light[3], dark[1], light[4], light[5], light[6], dark[5], dark[6]]).filter(Boolean);
+  // 候補は控えめな順。どれも見分けがつかなければ null＝その色の陰影は付けない（10/27 本人指示: 色相を大きくずらした「保険の色」はやめて、その分は色を付けない＝少し易しくなる）
+  const dark = (neutral ? [[0.72, 12], [0.62, 18], [0.5, 24], [0.4, 30], [0.3, 36]] : [[0.72, 0], [0.62, 12], [0.5, 18], [0.4, 24], [0.3, 30]]).map(([k, a]) => tint(hex, k, a, true));
+  const light = (neutral ? [[1.3, 12], [1.45, 18], [1.65, 24], [1.9, 30], [2.2, 36]] : [[1.3, 0], [1.45, 10], [1.65, 15], [1.9, 20], [2.2, 25]]).map(([k, a]) => tint(hex, k, a, false));
+  const ks = dir === 'dark' ? dark : dir === 'light' ? light : lum > 0.55 ? [dark[0], dark[1], light[0], dark[2], light[1], dark[3], dark[4]] : [light[0], light[1], dark[0], light[2], light[3], dark[1], light[4]];
   return ks.find(c => used.every(u => distinct(u, c))) || null;
 }
 function shade(hex, k){ // k<1 で暗く、>1 で明るく
@@ -444,9 +444,16 @@ const ANIMALS = [
      .e(12,13,11,8,COL.green).e(12,17,7,3.5,COL.mint).l(5,13,8,14.5,0.8,COL.dkgreen).l(8,14.5,16,14.5,0.8,COL.dkgreen).l(16,14.5,19,13,0.8,COL.dkgreen)
      .c(10.5,10.5,0.6,COL.dkgreen).c(13.5,10.5,0.6,COL.dkgreen).c(4,16,1.3,COL.pink).c(20,16,1.3,COL.pink);
   }},
-  { name:'ライオン', bw:26, bh:26, draw(P){
-    P.c(13,13,12.5,COL.brown).c(13,13.5,8.5,COL.orange).c(7,7,2.4,COL.orange).c(19,7,2.4,COL.orange).e(13,16.5,4.5,3,COL.tan)
-     .c(9.5,12,1.2,COL.black).c(16.5,12,1.2,COL.black).e(13,15,1.6,1.1,COL.black).l(13,16,11.8,17.2,0.5,COL.black).l(13,16,14.2,17.2,0.5,COL.black);
+  { name:'ライオン', bw:28, bh:28, draw(P){   // 10/27 描き直し（丸い耳＋丸いたてがみだとクマに見えた）: たてがみはギザギザ、耳は小さく、鼻は三角、ひげ付き
+    const cx = 14, cy = 14, N = 16;
+    for (let i = 0; i < N; i++){ const a = (i + 0.5) / N * Math.PI * 2, a0 = a - Math.PI / N, a1 = a + Math.PI / N;
+      P.p([[cx + 10 * Math.cos(a0), cy + 10 * Math.sin(a0)], [cx + 13.9 * Math.cos(a), cy + 13.9 * Math.sin(a)], [cx + 10 * Math.cos(a1), cy + 10 * Math.sin(a1)]], COL.brown); }
+    P.c(cx, cy, 11, COL.brown).c(cx, cy + 0.5, 8, COL.orange)
+     .c(8.6, 8.8, 2, COL.orange).c(19.4, 8.8, 2, COL.orange).c(8.6, 8.8, 1, COL.tan).c(19.4, 8.8, 1, COL.tan)
+     .e(cx, 17.6, 4.6, 3.2, COL.tan)
+     .c(10.8, 12.4, 1.2, COL.black).c(17.2, 12.4, 1.2, COL.black)
+     .p([[12.3, 15.3], [15.7, 15.3], [14, 17]], COL.black).l(14, 17, 14, 18.3, 0.5, COL.black).l(14, 18.3, 12.4, 19.5, 0.5, COL.black).l(14, 18.3, 15.6, 19.5, 0.5, COL.black)
+     .l(6.5, 16.6, 9.6, 17.3, 0.45, COL.black).l(6.5, 19.2, 9.6, 18.5, 0.45, COL.black).l(21.5, 16.6, 18.4, 17.3, 0.45, COL.black).l(21.5, 19.2, 18.4, 18.5, 0.45, COL.black);
   }},
   { name:'ペンギン', bw:20, bh:26, draw(P){
     P.e(10,15,8,10,COL.black).e(2.5,15,1.8,5,COL.black).e(17.5,15,1.8,5,COL.black).e(10,16,5.5,7.5,COL.white).c(10,6.5,5.5,COL.black)
