@@ -836,13 +836,17 @@ const CYC_DIM = [48, 48, 56, 64, 70];
 const maxDim = cyc => CYC_DIM[Math.min(cyc, CYC_DIM.length - 1)];
 // 2周目以降の基準倍率: 2周目は2倍（24マスの絵が48に）。3周目以降は上限に合わせて 2×56/48＝2.33倍、2×64/48＝2.67倍、2×70/48＝2.92倍
 const baseMult = cyc => cyc === 0 ? 1 : 2 * maxDim(cyc) / 48;
-function levelSpec(lv){
+// 50面ごとの「まさとパパ」は1面追加（10/28 本人指示「本来の面に1つ追加で、本来の面は次に出す」）＝50面がまさとパパ、51面が元の50面。以降の絵・難しさは「追加分を除いた番号」で決める
+const isMasatoLv = lv => lv % MASATO_EVERY === 0;
+const seqLv = lv => lv - Math.floor(lv / MASATO_EVERY);   // まさとパパの面自体は直前の面と同じ周・大きさ
+function levelSpec(lv0){
+  const lv = seqLv(lv0);
   const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
   if (PIC_OVERRIDE) return { food, k: parseFloat(Q.get('k') || '1') || 1, baseK: 1, limit: null, detail: parseInt(Q.get('detail') || '0', 10) || 0, noise: 0, shuffle: 1, chunk: 30 };
   // 1周目は基準サイズ、2周目は2倍（最大48マスで頭打ち）、3周目は56マス・4周目は64マス・5周目以降は70マスまで
   const MD = maxDim(cyc);
-  // 50面ごとは、まさとパパのイラストをその周の上限いっぱい（MD×MD）で出す（本来その面に出る絵は飛ばす）。色はイラストのまま（陰影・まだらは足さない）
-  if (lv % MASATO_EVERY === 0){ const k = MD / MASATO.bw; return { food: MASATO, k, baseK: k, limit: null, detail: 0, noise: 0, shuffle: 3, chunk: 22 + Math.min(18, lv * 0.6) }; }
+  // 50面ごとは、まさとパパのイラストをその周の上限いっぱい（MD×MD）で出す（追加の1面。本来の絵は次の面に出る）。色はイラストのまま（陰影・まだらは足さない）
+  if (isMasatoLv(lv0)){ const k = MD / MASATO.bw; return { food: MASATO, k, baseK: k, limit: null, detail: 0, noise: 0, shuffle: 3, chunk: 22 + Math.min(18, lv * 0.6) }; }
   const baseK = Math.min(baseMult(cyc), MD / Math.max(food.bw, food.bh));
   let k = baseK, limit = null;
   if (!food.paint){
