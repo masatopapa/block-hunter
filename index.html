@@ -40,6 +40,16 @@ body{font-family:var(--font-disp);color:var(--paper);-webkit-user-select:none;us
 .help b{color:#c2410c}
 .card p.lead{margin:6px -8px 0;font-size:17px;letter-spacing:0;white-space:nowrap}   /* タイトル下の説明は2行に収める（19pxのままだと3行になり「う！」だけ3行目に落ちていた） */
 .card p.credit{margin:18px 0 0;font-size:15px;font-weight:700;color:#9a7f62;letter-spacing:.02em}   /* タイトル画面の一番下: 作った人とプロフィールページへのリンク */
+/* 10面クリアごとのお祝い: 紙吹雪（画面全体・タップは下に通す）と「おめでとう！」の見出し */
+#fx{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5}
+#fx i{position:absolute;top:-24px;display:block;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{0%{top:-24px;transform:translateX(0) rotate(0)}100%{top:104%;transform:translateX(var(--dx)) rotate(var(--rot))}}
+.card.cele{animation:celepop .55s cubic-bezier(.2,1.6,.4,1) both;border-color:#f0b429;box-shadow:0 14px 0 #b07a12,0 0 0 6px rgba(255,214,90,.45),0 24px 40px rgba(0,0,0,.45)}
+@keyframes celepop{0%{transform:scale(.6)}100%{transform:scale(1)}}
+.card .omedeto{font-size:46px;margin:0 0 2px;background:linear-gradient(90deg,#ff5a5a,#ffb43a,#3fc36a,#3f97f3,#9a5ce6);-webkit-background-clip:text;background-clip:text;color:transparent;animation:wiggle 1.2s ease-in-out infinite}
+@keyframes wiggle{0%,100%{transform:rotate(-3deg) scale(1)}50%{transform:rotate(3deg) scale(1.06)}}
+.card .medal{font-size:56px;line-height:1;margin-bottom:4px;animation:spin 1.4s ease-in-out infinite}
+@keyframes spin{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-6px) rotate(8deg)}}
 .credit a{color:#c2410c;text-decoration:underline;text-underline-offset:3px;-webkit-tap-highlight-color:transparent}
 </style>
 </head>
@@ -47,6 +57,7 @@ body{font-family:var(--font-disp);color:var(--paper);-webkit-user-select:none;us
 <div id="wrap">
   <canvas id="game" width="540" height="1060"></canvas>
   <div id="ov"><div class="card" id="card"></div></div>
+  <div id="fx"></div>
 </div>
 <script>
 (() => {
@@ -475,7 +486,263 @@ const ANIMALS = [
   }}
 ];
 for (const p of PAINTINGS) p.paint = true;
-function rasterPic(p, k){ const P = new Pic(); p.draw(P); return P.raster(p.bw, p.bh, k); }
+// まさとパパのイラスト（tools/masato_grid.py で作成。お金チャンネルのアイコンの元）。. は空き
+const MASATO_PAL = { k:'#242424', s:'#f9c39a', o:'#e08452', n:'#34528f', w:'#fbf8f1' };
+const MASATO_GRIDS = {
+  48: [
+    '................................................',
+    '................................................',
+    '............kkk.................................',
+    '...........ssssk..............kkk...............',
+    '.........k.ssssk.........kkkkkwkkk.k.k..........',
+    '.........ksssssk......k..kkkkkkkkkkkkkk.k.......',
+    '..........sssssk.....kkkkkkkkkkkkkkkkkk.kk......',
+    '..........ssssso....kkkkkkkkkkkkkkkkkkkkkk.k....',
+    '..........sssssok...kkkkkkkkkkkkkkkkkkkkkk.k....',
+    '.........kssssso....kkkkkkkkkssskkkkkkkkkkkk.kk.',
+    '.........sssssok...kkkkkkkkssssssssskkkkkkkkkkk.',
+    '.........sssookk...kwkkkkksssssssssssskkkkkkk...',
+    '.......kkssoook.....kkkkkkssssssssssssskkkkk....',
+    '.....kkssksoook...kkkkkkksssssssssssssssskkkk...',
+    '....ksssssskook...kkkkkkksssssssssssssssssokk...',
+    '....ssssssssskk...kkkkkkssssssssssssssssssskk...',
+    '....sssssssssskk..kkkkkksssssssssssssssssssokk..',
+    '..ksskkkssssssok..kkkkkksssssssssksssssssssok...',
+    '...ksssskkosssok..kkkkkksssssssssskksssssssokk..',
+    '.k.ssssssskkoook..kkkkkkkssskkkkkssoossssssokk..',
+    '.kssssssssssokkk..kkkkkkksswkkkkwwsssssssssok...',
+    '.ksssssssssssook..kkkkkksssskkkkwwkssssssksok...',
+    '.ksskkkssssssoo..kssskkksssskkkkwwwssssssssok...',
+    '.ksssssskssssook.ssoskksssssskwwwwwssssskkko....',
+    'kwsssssssskoookkksssksksssssssswwwssssskkkkk....',
+    '.ssssssssssokkkkksssokssssssssssssssssskkkwk....',
+    '.ssskkssssssookkkssooossssssssssssssssskkkwk....',
+    '.sksssskssssoook.ksooossssssssssssssssssssok....',
+    '.kswsssskkosook..kssossssssssssssssssssssso.....',
+    '.ssksssssskkokk...ksssssssssssssossssoksssk.....',
+    '.ssosssssssokk.....sssssssssssssskssoossssk.....',
+    '.ssookssssssok......kksssssssssssssssssoso......',
+    '.ssooookksssko.......kosssssssssssssssssso......',
+    '.kssoosssssoko.......kossssssssssssosssssk......',
+    '.ksssosssssooo.......kowsssssssssssssssso.......',
+    '...ksskkkkkkok.......kskssssssssssssssso........',
+    '.....ksssssokkk......ksookssssssssssssok........',
+    '......kkoooookk......kssoooosssssssssok.........',
+    '......ksoooookk.....kksssooookosssssok..........',
+    '.....knkssooonnnkkkknksssoo....kkksok...........',
+    '......knkssoknnnnnknnnnkksonk.....k.............',
+    '......knnnkknnnnnnnknnnnnkknn...................',
+    '.......knnnnnnnnnnnnnnnnkksknk..................',
+    '........nnnknnnnnnnnnnnknkknnk..................',
+    '........kkknnnnnnnnnnnnnnkknnk..................',
+    '...........knnnnnnnknnknnnnnnnn.................',
+    '.............knnnnnknnnnnnnnnnnk................',
+    '..............knnnnnnnnnnnnkkknnk...............'
+  ],
+  56: [
+    '........................................................',
+    '........................................................',
+    '.............kkkk.......................................',
+    '............kwsssk................k.kk..................',
+    '.............ssssk..................kkk.k..k............',
+    '............ssssssk.........kkkkkkkkkkkkwk.kk...........',
+    '............ssssssk..........kkkkkkkkkkkkkkwkk.k........',
+    '............ssssssk.......kkkkkkkkkkkkkkkkkkkk.kk.......',
+    '...........kssssssk....kkkkkkkkkkkkkkkkkkkkkkkkkk..k....',
+    '...........sssssssk....kkkkkkkkkkkkkkkkkkkkkkkkkk.k.....',
+    '...........sssssssk....kkkkkkkkkkkkkkkkkkkkkkkkkkkk.....',
+    '..........kssssssok....kkkkkkkkksssssssskkkkkkkkkkk.kkk.',
+    '...........sssssook...kkkkkkkkksssssssssssskkkkkkkkkkk..',
+    '..........ksssoook....kwwkkkkksssssssssssssskkkkkkkkk...',
+    '.........ksssooook....kwkkkkkksssssssssssssssskkkkkk....',
+    '.......ksskksoook.....kkkkkkksssssssssssssssssskkkkk....',
+    '.....ksssssskkook....kkkkkkkkssssssssssssssssssssokkk...',
+    '.....ssssssssskok....kkkkkkkssssssssssssssssssssssokk...',
+    '...k.sssssssssssk....kkkkkkkssssssssssssssssssssssokk...',
+    '....ssssssssssssok...kkkkkkkssssssssssssssssssssssokk...',
+    '...ksskkkssssssssok..kkkkkkksssssssssskkssssssssssokk...',
+    '...kkssssskksssssok..kkkkkkkssssssssssskksssssssssokk...',
+    '..kksssssssskkooook..kkkkkkkksssskkkkksssoosssssssokk...',
+    '...ssssssssssokkoo...kkkkkkkkssswkkkkkwsssssssssssokk...',
+    '..sssssssssssssook....kkkkkksssskkkkkkwwssssssssssok....',
+    '..ssssssssssssssok...kskkkkksssskkkkkkwwksssssskksok....',
+    '..sskkskksssssssok..kskskkksssssskkkkwwwwsssssssssok....',
+    '.kksssssskkosssook.kssokskkssssssswwwwwwwsssssskkkok....',
+    '..ssssssssskkosook.ksssosksssssssssswwwwsssssskwkkkk....',
+    '.ssssssssssssokokk.kssssksssssssssssssssssssswkkkkk.....',
+    '.sssskssssssssooks.ksssoossssssssssssssssssssskkkwk.....',
+    '.sskssskssssssookk..ssooosssssssssssssssssssssskwok.....',
+    '.sksssssskosssookk..kssoossssssssssssssssssssssssok.....',
+    '.ksswssssskkosook....ssoosssssssssssssssssssksssso......',
+    '.ssskssssssskkokk....ksssssssssssssssssssssokssssk......',
+    '.ssskssssssssokkk.....ksssssssssssssssksssoosssssk......',
+    '.ssookksssssssook......kkssssssssssssssskssssssso.......',
+    '.kssookkkssssskok........owssssssssssssssssssssso.......',
+    '.kssokossokssokok........kwsssssssssssssoossssss........',
+    '.kssooossssssoook........kosssssssssssssssssssso........',
+    '..ksssokssssokook........kowssssssssssssssssssok........',
+    '...kkssokkkkkkok.........ksksssssssssssssssssok.........',
+    '.....kkssssssokkk........ksooksssssssssssssssk..........',
+    '.......ksssokkokk........kssoooossssssssssssk...........',
+    '.......koooooookk.......ksssooooooossssssssk............',
+    '......knksssoooknn.kk..kkssssookkkkkkossssk.............',
+    '......knksssooknnnnnkkknnkssssok.....kkkkk..............',
+    '.......knkkksoknnnnnnknnnnnkksonnk......................',
+    '........nnnnnknnnnnnnnknnnnnnksnnn......................',
+    '........knnnnnnknnnnnnnknnnnkkskknk.....................',
+    '.........knnnkknnnnnnnnnknnknksknnk.....................',
+    '.........knkknnnnnnnnnnnnnnknkknnnk.....................',
+    '..........k.kknnnnnnnknnnnknnnknnknk....................',
+    '..............knnnnnnnnnnnnnnnknnnnnk...................',
+    '...............kknnnnnnnnnnnnnnnnnnnn...................',
+    '.................knnnnknnnnnnnnnkkknnk..................'
+  ],
+  64: [
+    '................................................................',
+    '................................................................',
+    '.................k..............................................',
+    '..............kksssk............................................',
+    '.............kwsssssk..................kkkkk....................',
+    '..............ssssssk.................kwwkkkk.k..kk.............',
+    '..............ssssssk............kkkkkkkkwkkkkwk..k.............',
+    '..............ssssssok.......k...kkkkkkkkkkkkkkkk.kk..k.........',
+    '..............sssssssk........kkkkkkkkkkkkkkkkkkkkkk..kk........',
+    '............k.sssssssk.....kkkkkkkkkkkkkkkkkkkkkkkkkk.kk..k.....',
+    '............ksssssssok.....kkkkkkkkkkkkkkkkkkkkkkkkkkkkk..k.....',
+    '............ksssssssok....kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.kk.....',
+    '............ksssssssok.....kkkkkkkkkkkkssskkkkkkkkkkkkkkkk......',
+    '............kssssssook....kkkkkkkkkkssssssssssskkkkkkkkkkk.kkkk.',
+    '............kssssoook.....kkkkkkkkkwssssssssssssskkkkkkkkkkkkk..',
+    '...........ksssoooook....kwwkkkkkkksssssssssssssssskkkkkkkkk....',
+    '...........ksssooook.....kwwkkkkkksssssssssssssssssskkkkkkk.....',
+    '........kkskkssooook.....kkkkkkkkksssssssssssssssssssskkkkk.....',
+    '......kkssssskkooook.....kkkkkkkksssssssssssssssssssssssokkk....',
+    '.....kssssssssskkoo......kkkkkkkkssssssssssssssssssssssssokk....',
+    '....kwssssssssssskk.....kkkkkkkksssssssssssssssssssssssssokk....',
+    '.....ssssssssssssskk....kkkkkkkksssssssssssssssssssssssssokkk...',
+    '.....ssssssssssssssok...kkkkkkkksssssssssssssssssssssssssokkk...',
+    '...ksskkkkkssssssssook..kkkkkkkksssssssssssskksssssssssssokk....',
+    '....skssssskkosssssook..kkkkkkkkssssssssssssskkssssssssssokkk...',
+    '...kksssssssskkoossoo....kkkkkkkkssssskkkkksssoksssssssssskkk...',
+    '..ksssssssssssskkkook....kkkkkkkksssskwkkkkksssoossssssssskk....',
+    '..ksssssssssssssookkk....kkkkkkkkssswkkkkkkwwksssssssssssskk....',
+    '..ksssssssssssssssook....kkkkkkkssssskkkkkkwwwssssssssssssk.....',
+    '..ksssskssssssssssoo.....sskkkkkssssskkkkkkwwwkssssssoksssk.....',
+    '..kskkssskksssssssoo...ksokskkkssssssskkkkwwwwwsssssssssssk.....',
+    '..ksssssssskksssssokk.ksosksskksssssssswwwwwwwwsssssskkkkkk.....',
+    '..ssssssssssskkosookk.ssssokskssssssssssswwwwwsssssswkwkkkk.....',
+    '..ssssssssssssokkookk.sssssossssssssssssssssoosssssskkkkkwk.....',
+    '.sssssssssssssssookok.kssssokssssssssssssssssssssssskkkkwkk.....',
+    '.sssskkkssssssssookok.ksssooosssssssssssssssssssssssskkwwo......',
+    '.sskssssskssssssookok..sssooosssssssssssssssssssssssssssok......',
+    '..kssssssskkosssookk...kssooossssssssssssssssssssswsssssok......',
+    '.ksssssssssskkooookk....ksoosssssssssssssssssssssswsssssok......',
+    '..ssossssssssskkokk.....ksssssssssssssssssskssssssosssssk.......',
+    '.ssssksssssssssokkk......kssssssssssssssssssksssooksssssk.......',
+    '.ssoooksssssssssokk.......ksssssssssssssssssskkssossssso........',
+    '.kssoookksssssssokk.........kosssssssssssssssssskkskssso........',
+    '.ksssokoookkkssokok..........owssssssssssssssssssssssssk........',
+    '..sssokosssssssokok..........kwsssssssssssssssooossssso.........',
+    '..kssooksssssssoook..........kosssssssssssssssssssssssk.........',
+    '..kksssoksssssokook..........kowsssssssssssssssssssssok.........',
+    '....kkssokkkkkkkokk..........kskksssssssssssssssssssok..........',
+    '......kssssooosokokk.........ssooksssssssssssssssssok...........',
+    '.......kkssssskkookk........ksssoooossssssssssssssok............',
+    '........kkoooooooknk........ksssooooooossssssssssok.............',
+    '.......knssooooooknkk......kkssssooookkkoossssssok..............',
+    '.......knkssssoooknnnkkkkkknksssssok.....kkksssok...............',
+    '........nnksssooknnnnnnnkknnnkksssokk.......kkkk................',
+    '........knnkkksoknnnnnnnkknnnnnnkksknnk.........................',
+    '.........knnnnnnnnnnnnnnnkknnnnnnksknnn.........................',
+    '.........knnnnnnnknnnnnnknnnnnnnkkssknnk........................',
+    '..........knnnnkknnnnnnnnnnknnnknkokknnk........................',
+    '...........nnnknnnnnnnnnkknnknnknnoknnnk........................',
+    '...........kkkknnnnnnnnnknknnnknnnkknnknk.......................',
+    '...............knnnnnnnnknknnnknnnknnnknn.......................',
+    '................kknnnnnnknknnnnnnnnnnnnnnn......................',
+    '..................knnnnnnnknnnnnnnnnnnnnnnk.....................',
+    '...................kknnnnnnnnnnnnnnnk.kknnk.....................'
+  ],
+  70: [
+    '......................................................................',
+    '......................................................................',
+    '......................................................................',
+    '................kkkkk.................................................',
+    '...............kwssssk....................kkkkk.......................',
+    '..............kwssssssk.....................kwkkk.k..kk...............',
+    '..............ksssssssk.............kkk.kkkkwkkkkkwk..kk..............',
+    '..............ksssssssk.............kkkkkkkkkwkkkkwkk.kk..k...........',
+    '...............sssssssok........kkk.kkkkkkkkkkkkkkkkkkkkk..k..........',
+    '...............sssssssok.........kkkkkkkkkkkkkkkkkkkkkkkk..kk.........',
+    '...............sssssssok.....kkkkkkkkkkkkkkkkkkkkkkkkkkkkk.kk..kk.....',
+    '.............kssssssssok......kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk..k......',
+    '.............kssssssssok.....kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk.kk......',
+    '.............kssssssssok.....kkkkkkkkkkkkkksskkkkkkkkkkkkkkkkkkk......',
+    '.............ksssssssook....kkkkkkkkkkkksssssssssskkkkkkkkkkkkkwkkkkk.',
+    '.............kssssssook.....kkkkkkkkkkksssssssssssssskkkkkkkkkkkkkkk..',
+    '.............ssssoooook.....kwwwkkkkkkssssssssssssssssskkkkkkkkkkk....',
+    '.............ssssooookk....kwwwkkkkkkkssssssssssssssssssskkkkkkkk.....',
+    '..........kkksssoooook.....kwkkkkkkkkssssssssssssssssssssskkkkkk......',
+    '........kkssskksoooook.....kkkkkkkkkkssssssssssssssssssssssskkkkk.....',
+    '......kkssssssskkoooo......kkkkkkkkkssssssssssssssssssssssssssokkk....',
+    '.....kwsssssssssskkok......kkkkkkkkkssssssssssssssssssssssssssokkk....',
+    '....kwssssssssssssskk......kkkkkkkksssssssssssssssssssssssssssokkk....',
+    '....kssssssssssssssskk.....kkkkkkkksssssssssssssssssssssssssssookkk...',
+    '....kssssssssssssssssok....kkkkkkkksssssssssssssssssssssssssssookk....',
+    '....ksskkkkssssssssssoo....kkkkkkkkssssssssssssskssssssssssssssokk....',
+    '....ssksssskkksssssssoo....kkkkkkkkssssssssssssssnkssssssssssssokkk...',
+    '...kkkssssssskkkoosssok....kkkkkkkkssssssskkkssssskkkssssssssssokk....',
+    '..kwsssssssssssokkooook....kkkkkkkkksssskkkkkkkksssooosssssssssokk....',
+    '..kssssssssssssssokkkok....kkkkkkkkksssswkwkkkkwkssssssssssssssokk....',
+    '..kssssssssssssssssookk....kkkkkkkkksssskkkkkkkwwksssssssssssssok.....',
+    '..ksssssssssssssssssoo....kkskkkkkkssssskkkkkkkwwwksssssssskkksok.....',
+    '..kssskkkkssssssssssok...kwssskkkkssssssskkkkkkwwwwssssssssssssok.....',
+    '..kskksssskksssssssook...ksoksskkksssssssskkkkwwwwwssssssssssssok.....',
+    '.kkssssssssskkossssookk.ksosokskksssssssssswwwwwwwwssssssskkkkkok.....',
+    '..sssssssssssskkoosookk.kssssossksssssssssssswwwwwssssssswkwkkwk......',
+    '..sssssssssssssokkooosk.sssssskssssssssssssssssooossssssskkkkkwk......',
+    '.ssssssssssssssssookkok.ksssssokssssssssssssssssssssssssskkkkkwk......',
+    '.sssskkkssssssssssooksk.ksssoooossssssssssssssssssssssssskkkkwok......',
+    '.sssksssskksssssssooksk..sssoooossssssssssssssssssssssssssswwook......',
+    '..skssssssskosssssookk...kssooosssssssssssssssssssssssssssssssk.......',
+    '.kksswsssssskkoossokok....sssoosssssssssssssssssssssssskssssssk.......',
+    '..sssksssssssskkoookk.....kssosssssssssssssssssosssssssksssssok.......',
+    '..sssksssssssssokkokk......ksssssssssssssssssssksssssookssssso........',
+    '.ssosossssssssssookok......ksssssssssssssssssssskssssoossssssk........',
+    '.kssookksssssssssokok.......kkkssssssssssssssssssskkssssssssok........',
+    '.ksssoookksssssssokok..........kossssssssssssssssssskkkkkssso.........',
+    '.ksssookoookkksssokok..........kowssssssssssssssssssssssssssk.........',
+    '..sssooossssoossskook..........kowsssssssssssssssssoossssssok.........',
+    '..ksssokosssssssokook..........kokssssssssssssssssssssssssso..........',
+    '..kssssokossssssokook..........ksowsssssssssssssssssssssssok..........',
+    '....ksssokkkkkkkkook...........ksokssssssssssssssssssssssok...........',
+    '......kssokoooooookkk..........kssokssssssssssssssssssssok............',
+    '.......kksssssssokokk..........kssoooksssssssssssssssssok.............',
+    '........kkkssookkookk..........ksssooooossssssssssssssok..............',
+    '.........koooooooookkk.........ksssoooooooosssssssssssk...............',
+    '........nksssooooooknkk......kksssssoookkkkkkosssssssk................',
+    '........knkssssoooknnnnkkkkkknkksssssook.....kkkossok.................',
+    '........knnkssssooknnnnnnnkknnnnkksssookk.......kkkk..................',
+    '.........knnkkksoknnnnnnnnkknnnnnnnkksonnk............................',
+    '..........nnnnnnkknnnnnnnnnkknnnnnnnksonnnn...........................',
+    '..........knnnnnnnnknnnnnnknnknnnnnkkosnknn...........................',
+    '...........knnnnnkknnnnnnnnnnnnnnnnknosknnn...........................',
+    '...........knnnnkknnnnnnnnnknnknnnknnokknnk...........................',
+    '............knkknnnnnnnnnnnnknnknknnnkknnnkk..........................',
+    '.............k.kknnnnnnnnnknknnnnknnnkknnkknk.........................',
+    '.................knnnnnnnnknknnnknnnnkknnnnnnk........................',
+    '..................kknnnnnnnnknnnnnnnnnnnnnnnnn........................',
+    '....................knnnnnnnknnnnnnnnnnnknnnnnk.......................',
+    '.....................kknnnnnknnnnnnnnnnn..kknnk.......................'
+  ],
+};
+// 50面ごとの特別な面: まさとパパ。デザインは48マス角（k＝上限/48）。用意してある大きさ（48・56・64・70）はそのまま、それ以外は70から最近傍で縮める
+const MASATO_EVERY = 50;
+const MASATO = { name:'まさとパパ', bw:48, bh:48, masato:true, draw(){}, grids(k){
+  const N = Math.max(4, Math.round(48 * k)), src = MASATO_GRIDS[N] || MASATO_GRIDS[70], M = src.length, g = new Array(N * N).fill(0);
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){ const ch = src[Math.floor((r + 0.5) * M / N)][Math.floor((c + 0.5) * M / N)]; if (ch !== '.') g[r * N + c] = MASATO_PAL[ch]; }
+  return { W: N, H: N, g }; } };
+function rasterPic(p, k){ if (p.grids) return p.grids(k); const P = new Pic(); p.draw(P); return P.raster(p.bw, p.bh, k); }
 function blockCount(g){ let n = 0; for (const v of g) if (v) n++; return n; }
 // 絵の複雑さ（レベルで段階的に上げる）: d1=1色に陰影 / d2=2色 / d3=2色＋輪郭線＋いちばん多い色に網点 / d4=3色（最多色は影＋光）＋輪郭線＋2色に網点
 // 陰影は「絵の縁ぞい」に付ける（暗い色なら右下側の影、明るい色なら左上側の光）。面積はその色の約4分の1まで＝半分にすると何の絵かわからなくなる（パンダなど）ため
@@ -564,16 +831,18 @@ function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名�
 }
 // ---------- レベル生成 ----------
 const NCOL = 5, NSLOT = 5;
-// 1辺の上限（マス）: 1〜2周目は48、3周目は56、4周目以降は64（10/27 本人指示「3周目から上限を上げる」）。皿の大きさは固定なので1マスは 8→7→6px に縮む（壺の並びは変わらない）
-const CYC_DIM = [48, 48, 56, 64];
+// 1辺の上限（マス）: 1〜2周目は48、3周目は56、4周目は64、5周目以降は70（10/27 本人指示「3周目から上限を上げる」、10/28「5周目でもう1段階」）。皿の大きさは固定なので1マスは 8→7→6px に縮む（70は1マス6pxに収まる上限。72だと5pxになる）
+const CYC_DIM = [48, 48, 56, 64, 70];
 const maxDim = cyc => CYC_DIM[Math.min(cyc, CYC_DIM.length - 1)];
-// 2周目以降の基準倍率: 2周目は2倍（24マスの絵が48に）。3周目以降は上限に合わせて 2×56/48＝2.33倍、2×64/48＝2.67倍
+// 2周目以降の基準倍率: 2周目は2倍（24マスの絵が48に）。3周目以降は上限に合わせて 2×56/48＝2.33倍、2×64/48＝2.67倍、2×70/48＝2.92倍
 const baseMult = cyc => cyc === 0 ? 1 : 2 * maxDim(cyc) / 48;
 function levelSpec(lv){
   const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
   if (PIC_OVERRIDE) return { food, k: parseFloat(Q.get('k') || '1') || 1, baseK: 1, limit: null, detail: parseInt(Q.get('detail') || '0', 10) || 0, noise: 0, shuffle: 1, chunk: 30 };
-  // 1周目は基準サイズ、2周目は2倍（最大48マスで頭打ち）、3周目は56マス・4周目以降は64マスまで
+  // 1周目は基準サイズ、2周目は2倍（最大48マスで頭打ち）、3周目は56マス・4周目は64マス・5周目以降は70マスまで
   const MD = maxDim(cyc);
+  // 50面ごとは、まさとパパのイラストをその周の上限いっぱい（MD×MD）で出す（本来その面に出る絵は飛ばす）。色はイラストのまま（陰影・まだらは足さない）
+  if (lv % MASATO_EVERY === 0){ const k = MD / MASATO.bw; return { food: MASATO, k, baseK: k, limit: null, detail: 0, noise: 0, shuffle: 3, chunk: 22 + Math.min(18, lv * 0.6) }; }
   const baseK = Math.min(baseMult(cyc), MD / Math.max(food.bw, food.bh));
   let k = baseK, limit = null;
   if (!food.paint){
@@ -894,6 +1163,7 @@ function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
 function thud(){ tone(140, 0.18, 'sawtooth', 0.12, 80); }
 function buzz(){ tone(220, 0.5, 'sawtooth', 0.12, 110); setTimeout(() => tone(180, 0.6, 'sawtooth', 0.12, 90), 250); }
 function chime(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'sine', 0.14), i * 110)); }
+function fanfare(){ [[523, 0, 0.14], [523, 140, 0.14], [523, 280, 0.14], [659, 420, 0.5], [587, 760, 0.18], [659, 940, 0.18], [784, 1120, 0.18], [1047, 1300, 0.8]].forEach(([f, t, d]) => setTimeout(() => { tone(f, d, 'triangle', 0.13); tone(f / 2, d, 'sine', 0.08); }, t)); }
 
 // ---------- 描画 ----------
 function rr(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
@@ -998,8 +1268,16 @@ function draw(){
 }
 
 // ---------- オーバーレイ ----------
-function showOv(html){ card.innerHTML = html; ov.classList.add('on'); }
-function hideOv(){ ov.classList.remove('on'); }
+function showOv(html){ card.innerHTML = html; card.classList.remove('cele'); ov.classList.add('on'); }
+function hideOv(){ ov.classList.remove('on'); fxEl.innerHTML = ''; }
+// 紙吹雪（10面クリアごと）。画面いっぱいに降らせて約5秒で消える
+const fxEl = document.getElementById('fx'); let fxTimer = 0;
+function confetti(){
+  const cols = ['#ff5a5a', '#ffb43a', '#ffe03c', '#3fc36a', '#3f97f3', '#9a5ce6', '#f792b8', '#ffffff'];
+  let html = ''; for (let i = 0; i < 110; i++){ const w = 7 + Math.random() * 7, h = w * (0.4 + Math.random() * 0.8), dur = 2.6 + Math.random() * 2.2, delay = Math.random() * 1.6;
+    html += `<i style="left:${(Math.random() * 100).toFixed(1)}%;width:${w.toFixed(0)}px;height:${h.toFixed(0)}px;background:${cols[i % cols.length]};animation-duration:${dur.toFixed(2)}s;animation-delay:${delay.toFixed(2)}s;--dx:${((Math.random() - 0.5) * 160).toFixed(0)}px;--rot:${((Math.random() - 0.5) * 1440).toFixed(0)}deg"></i>`; }
+  fxEl.innerHTML = html; clearTimeout(fxTimer); fxTimer = setTimeout(() => { fxEl.innerHTML = ''; }, 5200);
+}
 function showTitle(){
   if (updatePending){ location.reload(); return; }   // 新しい版があればタイトルに戻るときに読み込み直す（到達レベルは保存済み）
   mode = 'title';
@@ -1026,8 +1304,13 @@ function showHelp(back){
 }
 function showClear(){
   saveBest(L.lv + 1);   // クリアした時点で次の面まで進めておく（10/27 本人指摘「クリア後タイトルに戻ると同じ面から始まる」）
-  showOv(`<div class="ants">🎉🐜🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>
+  const cele = L.lv % 10 === 0;   // 10面クリアごとにお祝い（紙吹雪・ファンファーレ・「おめでとう！」）。10/28 本人依頼
+  showOv(cele
+    ? `<div class="medal">🏆</div><h2 class="omedeto">おめでとう！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>
+    <button class="btn go" id="bNext">つぎのレベルへ</button><button class="btn sub" id="bTitle">タイトルへ</button>`
+    : `<div class="ants">🎉🐜🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>
     <button class="btn go" id="bNext">つぎのレベルへ</button><button class="btn sub" id="bTitle">タイトルへ</button>`);
+  if (cele){ card.classList.add('cele'); confetti(); setTimeout(fanfare, 450); }
   document.getElementById('bNext').onclick = () => startLevel(L.lv + 1, Date.now() & 0xffffff);
   document.getElementById('bTitle').onclick = showTitle;
 }
@@ -1059,7 +1342,7 @@ fit();
 // ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
-if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
+if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
 // 動作確認用: ?sim=17 で、その面の並び10通りについて各シミュレーション（C=慎重 A=せっかち I=少しずつ、小文字=ランダム混じり）の合否を title に出す
 if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = levelSpec(lv); const R = mulberry32(5); let k = spec.k, ras = rasterPic(spec.food, k);
   const { W, H, g } = ras; applyDetail(g, W, H, spec.detail); spec.chunk = Math.max(spec.chunk, blockCount(g) / 36); const out = [];
