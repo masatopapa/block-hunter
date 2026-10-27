@@ -556,22 +556,27 @@ function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名�
   let { cyc, idx, order } = pos; let j = idx + 1; while (j < order.length && !order[j].paint) j++;
   if (j >= order.length){ cyc += 1; order = CYCLE2; j = 0; while (j < order.length && !order[j].paint) j++; if (j >= order.length) return null; }
   const key = cyc + ':' + order.length + ':' + j; if (limitCache.has(key)) return limitCache.get(key);
-  const p = order[j]; const k = Math.min(cyc >= 1 ? 2 : 1, MAXDIM / Math.max(p.bw, p.bh));   // 2周目以降の名画は2倍（levelSpec と同じ）
+  const p = order[j]; const k = Math.min(baseMult(cyc), maxDim(cyc) / Math.max(p.bw, p.bh));   // 周ごとの基準倍率（levelSpec と同じ。3周目以降は上限が上がる）
   const n = blockCount(rasterPic(p, k).g); limitCache.set(key, n); return n;
 }
 // ---------- レベル生成 ----------
 const NCOL = 5, NSLOT = 5;
-const MAXDIM = 48;
+// 1辺の上限（マス）: 1〜2周目は48、3周目は56、4周目以降は64（10/27 本人指示「3周目から上限を上げる」）。皿の大きさは固定なので1マスは 8→7→6px に縮む（壺の並びは変わらない）
+const CYC_DIM = [48, 48, 56, 64];
+const maxDim = cyc => CYC_DIM[Math.min(cyc, CYC_DIM.length - 1)];
+// 2周目以降の基準倍率: 2周目は2倍（24マスの絵が48に）。3周目以降は上限に合わせて 2×56/48＝2.33倍、2×64/48＝2.67倍
+const baseMult = cyc => cyc === 0 ? 1 : 2 * maxDim(cyc) / 48;
 function levelSpec(lv){
   const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
   if (PIC_OVERRIDE) return { food, k: parseFloat(Q.get('k') || '1') || 1, baseK: 1, limit: null, detail: parseInt(Q.get('detail') || '0', 10) || 0, noise: 0, shuffle: 1, chunk: 30 };
-  // 1周目は基準サイズ、2周目以降は2倍（最大48マスで頭打ち）
-  const baseK = Math.min(cyc >= 1 ? 2 : 1, MAXDIM / Math.max(food.bw, food.bh));
+  // 1周目は基準サイズ、2周目は2倍（最大48マスで頭打ち）、3周目は56マス・4周目以降は64マスまで
+  const MD = maxDim(cyc);
+  const baseK = Math.min(baseMult(cyc), MD / Math.max(food.bw, food.bh));
   let k = baseK, limit = null;
   if (!food.paint){
     // 名画以外は周の6面・11面・16面…と5面ごとにブロック数を2割ずつ増やす（ただし次に出る名画より少なく＝makeLevelで抑える）
     const step = inLv >= 6 ? Math.floor((inLv - 1) / 5) : 0;
-    k = Math.min(MAXDIM / Math.max(food.bw, food.bh), baseK * Math.sqrt(1 + 0.2 * step));
+    k = Math.min(MD / Math.max(food.bw, food.bh), baseK * Math.sqrt(1 + 0.2 * step));
     limit = nextPaintingLimit(pos);
   }
   // 絵の複雑さ: 1周目 16面から1、31面から2、41面から3。2周目は最初から3、周の後半（21面目〜）と3周目以降は4
