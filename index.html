@@ -1000,7 +1000,7 @@ function showTitle(){ mode = 'title';
   const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
   showOv(`<div class="ants">🐜🐜🐜</div><h1>ブロックハンター</h1><p>色ごとのアリを送って、ドット絵の食べ物・乗り物・家電・名画を食べ尽くそう！</p>
     <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}<button class="btn sub" id="bHelp">あそびかた</button>
-    <p class="credit">Made by <a href="https://mastopapa.com/profile/" target="_blank" rel="noopener">Masato Papa</a></p>`);
+    <p class="credit">つくった人：<a href="https://mastopapa.com/profile/" target="_blank" rel="noopener">まさとパパ</a></p>`);
   document.getElementById('bCont').onclick = () => startLevel(bestLv, Date.now() & 0xffffff);
   card.querySelectorAll('.cp').forEach(b => { b.onclick = () => startLevel(parseInt(b.dataset.lv, 10), Date.now() & 0xffffff); });
   document.getElementById('bHelp').onclick = () => showHelp(showTitle);
