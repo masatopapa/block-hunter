@@ -75,22 +75,55 @@ function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t
 let rnd = Math.random;
 
 // ---------- 色（ビーズ風の明るい色。各色に名前を付けてアリの色にも使う） ----------
+// 10/27 黒と紺・黄とオレンジが見分けにくいと指摘 → 黒を濃く、紺を鮮やかな青紫寄りに、黄をレモン寄りに、オレンジを赤寄りに。灰色2段も離した
 const COL = {
-  red:'#e84a3f', dkred:'#b3262b', orange:'#f5902c', yellow:'#f8d13a', green:'#4ec95a', dkgreen:'#2f8f3e',
-  blue:'#3d8ef0', lblue:'#74d4f6', purple:'#9a5ce6', pink:'#f792b8', brown:'#8d5a2b', dkbrown:'#5c3317',
-  lbrown:'#d6a26a', tan:'#f2dcae', white:'#fbf8f1', black:'#3b3b3b', mint:'#7de8c9', salmon:'#ff8f5a', cream:'#fff0c2',
-  gray:'#a3a9b1', dkgray:'#626a74', navy:'#2c4f9e', dkorange:'#d8661c'
+  red:'#ec4a3c', dkred:'#9c1430', orange:'#f58a1f', yellow:'#ffe03c', green:'#52d05a', dkgreen:'#237f33',
+  blue:'#3f97f3', lblue:'#74d4f6', purple:'#9a5ce6', pink:'#f792b8', brown:'#a0682c', dkbrown:'#73300e',
+  lbrown:'#dcaa72', tan:'#e8cc93', white:'#fbf8f1', black:'#242424', mint:'#7de8c9', salmon:'#ff9c7a', cream:'#fdeba0',
+  gray:'#a6adb5', dkgray:'#5c6673', navy:'#2d4dc2', dkorange:'#b8420a'
 };
-// 既存の色と見分けがつく「同系の別の濃さ」を1つ返す（明るい色は暗く、暗い色は明るく。近すぎる候補は飛ばす）
 const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
 const colorDist = (a, b) => { const p = rgbOf(a), q = rgbOf(b); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
 const lumOf = h => { const [r, g, b] = rgbOf(h); return 0.3 * r + 0.59 * g + 0.11 * b; };
-function variantColor(hex, used, dir){ // dir: 'dark' | 'light' | 省略＝明るい色は暗く、暗い色は明るく
-  const [r, g, b] = rgbOf(hex); const lum = (0.3 * r + 0.59 * g + 0.11 * b) / 255;
-  const dark = [0.74, 0.6, 0.48, 0.36], light = [1.3, 1.45, 1.75, 2.1];
-  const ks = dir === 'dark' ? dark : dir === 'light' ? light : lum > 0.55 ? [0.74, 0.6, 1.3, 0.48] : [1.45, 1.75, 0.6, 2.1];
-  for (const k of ks){ const c = shade(hex, k); if (used.every(u => colorDist(u, c) >= 52)) return c; }
-  return null;
+// 見分けやすさの指標: Lab の色差。ただし暗い色どうしは色味（a・b）の違いが見えにくいので、2色の明るさに応じて a・b の重みを下げる（黒と紺のように RGB では離れていても見分けにくい組を拾う）
+const labOf = h => { const f = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const [r, g, b] = rgbOf(h).map(f); const X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+  const t = v => v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116; const fx = t(X), fy = t(Y), fz = t(Z); return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)]; };
+const vdist = (a, b) => { const p = labOf(a), q = labOf(b); const c = Math.max(0.45, Math.min(1, (p[0] + q[0]) / 100)); return Math.hypot(p[0] - q[0], c * (p[1] - q[1]), c * (p[2] - q[2])); };
+const SEE = 30;   // これ以上離れていれば別の色として見分けがつく（陰影・輪郭線で作る色はすべてこの基準で選ぶ。元の RGB 距離52より厳しい）
+// 「見分けがつく」の判定: 色差 SEE 以上で、かつ 明るさの差20以上／鮮やかさの差35以上／片方が無彩色でもう片方が鮮やか／色相が40度以上ちがう のどれか（同じ色相で明るさが少し違うだけの2色＝オリーブ2色などを弾く）
+// 鮮やかさも暗い色では見えにくいので vdist と同じ重みを掛けて比べる（旧パレットの黒と紺はこれで「見分けにくい」と判定される）
+function distinct(a, b){
+  const p = labOf(a), q = labOf(b); if (Math.abs(p[0] - q[0]) >= 25) return true;   // 明るさが25以上ちがえば無条件（灰色の段と同じ）
+  if (vdist(a, b) < SEE) return false;
+  const c = Math.max(0.45, Math.min(1, (p[0] + q[0]) / 100)), cp = c * Math.hypot(p[1], p[2]), cq = c * Math.hypot(q[1], q[2]);
+  if (Math.abs(p[0] - q[0]) >= 20 || Math.abs(cp - cq) >= 35) return true;
+  if (Math.min(cp, cq) < 12) return Math.max(cp, cq) >= 30;
+  let dh = Math.abs(Math.atan2(p[2], p[1]) - Math.atan2(q[2], q[1])) * 180 / Math.PI; if (dh > 180) dh = 360 - dh;
+  return dh >= 40 && Math.min(cp, cq) >= 18;
+}
+const hslOf = hex => { const [r, g, b] = rgbOf(hex).map(v => v / 255); const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; if (mx === mn) return [0, 0, l];
+  const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return [h * 60, s, l]; };
+const hexOfHsl = (h, s, l) => { h = (((h % 360) + 360) % 360) / 360; const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = t => { t = ((t % 1) + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return '#' + [f(h + 1 / 3), f(h), f(h - 1 / 3)].map(v => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0')).join(''); };
+// 濃さを k 倍にしたうえで色相を amt 度ずらす（影は青寄り・光は黄寄り＝ドット絵の定石。同系に見えたまま見分けやすくなる）。無彩色は代わりに薄く色を付ける（影は青みのグレー、光は黄みのグレー）
+function tint(hex, k, amt, dark){
+  if (!amt) return shade(hex, k);
+  const base = shade(hex, k), lc = labOf(base); let [h, s, l] = hslOf(base);
+  if (Math.hypot(lc[1], lc[2]) < 12){ h = dark ? 225 : 48; s = Math.min(0.32, 0.08 + amt / 60); }   // 無彩色の判定は Lab の鮮やかさで（HSL の s は白に近いと大きく出る）
+  else { const dir = dark || amt >= 40 ? (h >= 45 && h < 240 ? 1 : -1) : (h > 60 && h <= 240 ? -1 : 1); h += dir * amt;   // 大きくずらす保険は光でも影と同じ向き（茶を黄緑に、青を水色にすると不自然）
+    if (amt < 40) s = Math.min(1, s * (dark ? Math.min(1.5, 1 + amt / 60) : 1 - amt / 120)); }   // 色相を大きくずらす保険の候補は鮮やかさを変えない（上げると蛍光色になる）
+  return hexOfHsl(h, s, l);
+}
+// 既存の色と見分けがつく（vdist が SEE 以上）いちばん控えめな「同系の別の濃さ」を1つ返す。dir: 'dark' | 'light' | 省略＝明るい色は暗く、暗い色は明るく
+function variantColor(hex, used, dir){
+  const lum = lumOf(hex) / 255, lh = labOf(hex), neutral = Math.hypot(lh[1], lh[2]) < 12;   // 白・灰・黒は濃淡だけでは見分けにくい（白と灰と黒の間に2色は入らない）ので、最初から色味を付ける
+  // 候補は控えめな順。有彩色の最後の2つは濃さをあまり変えずに色相を大きくずらしたもの（黒がある絵の茶色など、濃くしても見分けがつかないときの保険）
+  const dark = (neutral ? [[0.72, 12], [0.62, 18], [0.5, 24], [0.4, 30], [0.3, 36]] : [[0.72, 0], [0.62, 12], [0.5, 18], [0.4, 24], [0.3, 30], [0.9, 40], [0.85, 55]]).map(([k, a]) => tint(hex, k, a, true));
+  const light = (neutral ? [[1.3, 12], [1.45, 18], [1.65, 24], [1.9, 30], [2.2, 36]] : [[1.3, 0], [1.45, 10], [1.65, 15], [1.9, 20], [2.2, 25], [1.1, 40], [1.15, 55]]).map(([k, a]) => tint(hex, k, a, false));
+  const ks = (dir === 'dark' ? dark : dir === 'light' ? light : lum > 0.55 ? [dark[0], dark[1], light[0], dark[2], light[1], dark[3], dark[4], dark[5], dark[6], light[5], light[6]] : [light[0], light[1], dark[0], light[2], light[3], dark[1], light[4], light[5], light[6], dark[5], dark[6]]).filter(Boolean);
+  return ks.find(c => used.every(u => distinct(u, c))) || null;
 }
 function shade(hex, k){ // k<1 で暗く、>1 で明るく
   const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
@@ -360,7 +393,7 @@ const PAINTINGS = [
      .r(2.5,15.5,15.5,22.5,COL.dkbrown).e(9,21,4.2,1.5,COL.tan).c(7.6,8.6,0.4,COL.black).c(10.4,8.6,0.4,COL.black).e(9,11.2,0.9,0.4,COL.red);
   }},
   { name:'ひまわり風', bw:20, bh:26, draw(P){
-    P.r(0,0,20,26,COL.cream).r(0,20,20,26,COL.tan).p([[6,20],[14,20],[13.5,13],[6.5,13]], COL.yellow).r(6.4,16.5,13.6,17.5,COL.dkbrown);
+    P.r(0,0,20,26,COL.cream).r(0,20,20,26,COL.lbrown).p([[6,20],[14,20],[13.5,13],[6.5,13]], COL.yellow).r(6.4,16.5,13.6,17.5,COL.dkbrown);   // 机は tan だと背景の cream と見分けにくい → lbrown
     const fl = [[5,6],[10,4],[15,7],[8,10],[13,11]];
     for (const [x,y] of fl) P.l(x, y, 10, 13.5, 0.8, COL.green);
     for (const [x,y] of fl) P.c(x, y, 2.9, COL.orange).c(x, y, 2.1, COL.yellow).c(x, y, 1.3, COL.brown);
@@ -434,21 +467,6 @@ const ANIMALS = [
 for (const p of PAINTINGS) p.paint = true;
 function rasterPic(p, k){ const P = new Pic(); p.draw(P); return P.raster(p.bw, p.bh, k); }
 function blockCount(g){ let n = 0; for (const v of g) if (v) n++; return n; }
-// 色を増やす（16面から1色・31面から2色）: いちばん多い色（次いで2番目）を右下側の半分だけ別の濃さにする（陰影のように見える）
-function applyExtras(g, W, H, extra){
-  if (!extra) return g;
-  const cnt = {}; for (const v of g) if (v) cnt[v] = (cnt[v] || 0) + 1;
-  const order = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]); const used = order.map(k => COL[k] || k);
-  for (let e = 0; e < extra && e < order.length; e++){
-    const src = order[e]; const nc = variantColor(COL[src] || src, used); if (!nc) continue; used.push(nc);
-    const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src) cells.push(i);
-    const diag = i => (i % W + 0.5) / W + (Math.floor(i / W) + 0.5) / H;
-    cells.sort((a, b) => diag(a) - diag(b)); const th = diag(cells[Math.floor(cells.length / 2)]);
-    for (const i of cells) if (diag(i) >= th) g[i] = nc;
-  }
-  return g;
-}
-function picColors(p, k, extra){ const { W, H, g } = rasterPic(p, k); applyExtras(g, W, H, extra); return new Set(g.filter(v => v)).size; }
 // 絵の複雑さ（レベルで段階的に上げる）: d1=1色に陰影 / d2=2色 / d3=2色＋輪郭線＋いちばん多い色に網点 / d4=3色（最多色は影＋光）＋輪郭線＋2色に網点
 // 陰影は「絵の縁ぞい」に付ける（暗い色なら右下側の影、明るい色なら左上側の光）。面積はその色の約4分の1まで＝半分にすると何の絵かわからなくなる（パンダなど）ため
 function applyDetail(g, W, H, d){
@@ -461,12 +479,13 @@ function applyDetail(g, W, H, d){
   if (d >= 3) for (let r = 0; r < H; r++) for (let c = 0; c < W; c++){ const i = r * W + c; if (!g[i]) continue;
     for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]){ const cc = c + dc, rr = r + dr; if (cc < 0 || rr < 0 || cc >= W || rr >= H || !g[rr * W + cc]){ edge.add(i); break; } } }
   const isOut = (c, r) => c < 0 || r < 0 || c >= W || r >= H || !g[r * W + c] || edge.has(r * W + c);
-  // 輪郭線の色は陰影の色より先に決める（黒い目などがある絵で、陰影に濃い色を取られて輪郭線が無くなると、縁が元の色のまま残って「縁の色の壺が先に5個並ぶ→縁を食べ切ると陰影に囲まれて届かない」詰みになる）
-  let oc = null;
-  if (d >= 3){ const main = COL[order[0]] || order[0];
-    oc = [shade(main, 0.4), '#2b2f55', '#4a2a1a', '#1f1f1f', '#1b2a6b', '#0b1f4f', '#143a66', '#4a1a2a', '#1a3a2a'].find(c => used.every(u => colorDist(u, c) >= 52)) || null;
-    if (oc) used.push(oc); }
-  applyDetail.noOutline = d >= 3 && !oc;   // 動作確認用
+  // 輪郭線の色（d3以上）。陰影の色を決めたあとに、それら全部と見分けがつく色を選ぶ。濃い候補を先に、それが黒・紺などと見分けにくければ中間の明るさで色味のはっきりした線（主色に近い色相から。主色が無彩色なら青みのグレーから）
+  // ※輪郭線が無いと縁が元の色のまま残り「縁の色の壺が先に5個並ぶ→縁を食べ切ると陰影に囲まれて届かない」詰みになるので、候補は色相をひととおり用意してある（?colors の末尾 N で検出）
+  const pickOutline = () => { const main = COL[order[0]] || order[0];
+    const darks = [shade(main, 0.4), '#1f1f1f', '#2b2f55', '#1b2a6b', '#4a2a1a', '#0b1f4f', '#143a66', '#4a1a2a', '#1a3a2a'];
+    const hue = hslOf(main), hd = c => { const h = hslOf(c); return Math.min(Math.abs(h[0] - hue[0]), 360 - Math.abs(h[0] - hue[0])); };
+    const mids = ['#4f6fb0', '#3a52c8', '#2e8b3e', '#8a3a10', '#b02868', '#1d7a8a', '#7a2a86']; const lm = labOf(main); if (Math.hypot(lm[1], lm[2]) >= 12) mids.sort((a, b) => hd(a) - hd(b));
+    return darks.concat(mids).find(c => used.every(u => distinct(u, c))) || null; };
   // sgn=+1 は右下側（影）、-1 は左上側（光）。その方向に何マスで絵の外に出るか（1〜4、遠ければ5）が浅く、その方向の端に近いセルから順に、その色の frac 分だけ塗り替える
   const shadeCells = (src, nc, sgn, frac) => {
     const cells = []; for (let i = 0; i < g.length; i++) if (g[i] === src && !edge.has(i)) cells.push(i);
@@ -488,8 +507,9 @@ function applyDetail(g, W, H, d){
       shadeCells(src, nc, lumOf(nc) < lumOf(hex) ? 1 : -1, 0.25);
     }
   }
-  if (d >= 3){ // 輪郭線: 外（空き）に接するセルを濃い線の色に
-    if (oc) for (const i of edge) g[i] = oc;
+  let oc = null;
+  if (d >= 3){ // 輪郭線: 外（空き）に接するセルを線の色に
+    oc = pickOutline(); if (oc){ used.push(oc); for (const i of edge) g[i] = oc; }
     // 網点: 多い色の中に格子状の点を打つ（d3は最多色だけ、d4は2色）。点の色はその色の濃淡分けで作った色を使い回す（孤立した色を増やさない＝詰まりにくい）
     const texN = d >= 4 ? 2 : 1;
     for (let e = 0; e < texN && e < order.length; e++){
@@ -498,6 +518,7 @@ function applyDetail(g, W, H, d){
         if (e === 0 ? (c % 3 === 1 && r % 3 === 1) : ((c + r) % 4 === 0 && c % 2 === 0)) g[i] = tc; }
     }
   }
+  applyDetail.noOutline = d >= 3 && !oc;   // 動作確認用
   return g;
 }
 // 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
@@ -513,8 +534,10 @@ function buildOrder(filter, withPaintings){
 }
 // 1周目: 名画以外の全部（名画は小さいとそう見えないので1周目には出さない）
 const CYCLE1 = buildOrder(() => true, false);
-// 2周目以降: 単純すぎる絵（基準200ブロック未満）と色数（追加色込み）5以下の絵は出さず、名画は1.5倍になったここから出す
-const CYCLE2 = buildOrder(p => blockCount(rasterPic(p, 1).g) >= 200 && picColors(p, 1.5, 2) >= 6, true);
+// 2周目以降: 単純すぎる絵（基準200ブロック未満）と色数が少ない絵（エアコン・セラミックファンヒーター・れいぞうこ）は出さず、名画は2倍になったここから出す
+// ※色数の少ない絵は名前で固定（10/27まで「追加色込み5以下」を計算していたが、陰影の色の作り方を変えると2周目の並びが変わってしまうため）
+const FEW_COLORS = new Set(['エアコン', 'セラミックファンヒーター', 'れいぞうこ']);
+const CYCLE2 = buildOrder(p => blockCount(rasterPic(p, 1).g) >= 200 && !FEW_COLORS.has(p.name), true);
 const PICS = CYCLE1;
 let PIC_OVERRIDE = null;   // 動作確認用（?pic=名前）
 function levelPos(lv){ // レベル → 周・周内の位置・その周の並び
@@ -1023,6 +1046,10 @@ if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = leve
     if (Q.get('dbg') && r[2] === '-' && !out.some(x => x.startsWith('{'))){ simulate(g, W, H, s, 'interleave'); out.push(JSON.stringify(simulate.fail)); } }
   document.title = 'lv' + lv + ' ' + spec.food.name + ' d' + spec.detail + ' n' + blockCount(g) + ' ' + out.join(' '); }
 // 動作確認用: ?colors=76 で各面の「名前:色数:ブロック数:次の名画のブロック数」を title に出す
+// ?palette=87: 各面で実際に使う色（陰影・輪郭線込み）のうち、いちばん見分けにくい2色とその距離（vdist）、distinct に通らない組の数と最初の組（元の絵の設計で同系2色を使っている所は残る）、全色
+if (Q.get('palette')){ const n = parseInt(Q.get('palette'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); const cs = [...new Set(Lx.grid.filter(v => v))].map(v => COL[v] || v); let mn = 999, pr = '', nf = 0, fp = '';
+  for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++){ const dd = vdist(cs[i], cs[j]); if (dd < mn){ mn = dd; pr = cs[i] + '/' + cs[j]; } if (!distinct(cs[i], cs[j])){ nf++; fp = fp || cs[i] + '/' + cs[j]; } }
+  out.push(lv + ':' + Lx.name + ':' + cs.length + ':' + mn.toFixed(0) + ':' + pr + ':F' + nf + (fp ? '=' + fp : '') + ':' + cs.join(',')); } document.title = out.join(' '); }
 if (Q.get('colors')){ const n = parseInt(Q.get('colors'), 10) || 42; const out = []; for (let lv = 1; lv <= n; lv++){ const Lx = makeLevel(lv, 1); out.push(lv + ':' + Lx.name + ':' + new Set(Lx.grid.filter(v => v)).size + ':' + Lx.total + ':' + (Lx.limit == null ? '-' : Lx.limit) + ':d' + Lx.detail + ':' + Lx.W + 'x' + Lx.H + ':t' + Lx.tries + (Lx.valid ? '' : 'X') + (applyDetail.noOutline ? 'N' : '')); } document.title = out.join(' '); }   // N＝輪郭線の色が取れなかった面
 if (Q.get('lv')){ startLevel(parseInt(Q.get('lv'), 10) || 1, parseInt(Q.get('seed') || '1', 10)); } else showTitle();
 if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let best = -1, bv = -1;
