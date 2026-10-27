@@ -757,8 +757,10 @@ function startLevel(lv, seed){
     shake: 0, sent: 0, time: 0, stuckT: 0, winT: 0, rip: [], fast: false, fastT: 0, autoT: 0, ret: null, retDirty: true
   };
   boardDirty = true; mode = 'play'; hideOv();
-  try { if (lv > bestLv){ bestLv = lv; } localStorage.setItem('bh_level', String(bestLv)); } catch (e) {}
+  saveBest(lv);
 }
+// 到達レベルを保存（始めた面。クリアしたら次の面＝タイトルに戻っても次の面から始まる）
+function saveBest(lv){ if (lv > bestLv) bestLv = lv; try { localStorage.setItem('bh_level', String(bestLv)); } catch (e) {} }
 const cellPx = (c, r) => [G.px0 + (c + 0.5) * G.cs, G.py0 + (r + 0.5) * G.cs];
 const idxPx = (F, i) => cellPx(i % F.GW - 1, Math.floor(i / F.GW) - 1);
 
@@ -1018,6 +1020,7 @@ function showHelp(back){
   document.getElementById('bBack').onclick = back;
 }
 function showClear(){
+  saveBest(L.lv + 1);   // クリアした時点で次の面まで進めておく（10/27 本人指摘「クリア後タイトルに戻ると同じ面から始まる」）
   showOv(`<div class="ants">🎉🐜🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>
     <button class="btn go" id="bNext">つぎのレベルへ</button><button class="btn sub" id="bTitle">タイトルへ</button>`);
   document.getElementById('bNext').onclick = () => startLevel(L.lv + 1, Date.now() & 0xffffff);
