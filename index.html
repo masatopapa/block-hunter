@@ -743,6 +743,7 @@ let sprites = new Map();
 let muted = false; try { muted = (localStorage.getItem('bh_mute') || localStorage.getItem('fh_mute')) === '1'; } catch (e) {}
 let bestLv = 1; try { bestLv = Math.max(1, parseInt(localStorage.getItem('bh_level') || localStorage.getItem('fh_level') || '1', 10) || 1); } catch (e) {}   // fh_ は旧名のころの保存（引き継ぐ）
 let mode = 'title';              // title / play / clear / stuck
+let updatePending = false;       // 新しい版が公開されていたら true（タイトル画面で読み込み直す）
 let now = 0, last = 0;
 
 function startLevel(lv, seed){
@@ -999,7 +1000,9 @@ function draw(){
 // ---------- オーバーレイ ----------
 function showOv(html){ card.innerHTML = html; ov.classList.add('on'); }
 function hideOv(){ ov.classList.remove('on'); }
-function showTitle(){ mode = 'title';
+function showTitle(){
+  if (updatePending){ location.reload(); return; }   // 新しい版があればタイトルに戻るときに読み込み直す（到達レベルは保存済み）
+  mode = 'title';
   // 10面ごとのチェックポイント（1・11・21…のうち到達した分）からやり直せる
   const cps = []; for (let lv = 1; lv <= bestLv; lv += 10) cps.push(lv);
   const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
@@ -1095,9 +1098,25 @@ if (Q.get('auto')){ muted = true; const bot = () => { if (mode === 'play'){ let 
           if (mode === 'stuck' && Q.get('dbg')){ const m = reachAll(G.grid, G.W, G.H), rem = {}; for (const v of G.grid) if (v) rem[v] = (rem[v] || 0) + 1;   // 動作確認用: 詰んだときの枠・残り・届く数
             res.push('slots=' + G.slots.map(s => s ? s.col + 'x' + s.n : '-').join(',') + ' remain=' + Object.keys(rem).map(c => c + ':' + rem[c] + '/' + ((m[c] || []).length)).join(',') + ' tops=' + G.stacks.map(s => s.slice(0, 2).map(t => t.col + 'x' + t.n).join('/')).join(' ')); }
           if (to && L.lv < to) startLevel(L.lv + 1, parseInt(Q.get('seed') || '1', 10)); else break; } }   // 詰んでも次の面へ進む（範囲ぶんを一度に確認）
+      if (Q.get('then') === 'title'){ const b = document.getElementById('bTitle'); if (b){ b.click(); res.push('TITLE:' + document.getElementById('bCont').textContent); } }   // 動作確認用: 終わった画面で「タイトルへ」を押し、タイトルのボタンの文字を出す
       if (!stopAt) document.title = res.join(' | ') || ('RUN lv' + L.lv + ' left' + G.left + ' t' + G.time.toFixed(0)); else { hideOv(); frozen = true; } }
     catch (e) { document.title = 'ERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]; }
   } else setInterval(bot, 400); }
+
+// ---------- 新しい版の自動読み込み（GitHub Pages で開いているときだけ） ----------
+// 開いたままのタブやホーム画面のアプリは古い版のまま動き続ける（10/27 クリア後の修正が届かなかった）。画面に戻るたびに（30秒に1回まで）
+// index.html の ETag を比べ、変わっていればタイトル画面なら今すぐ、遊んでいる途中ならタイトルに戻るときに読み込み直す
+(() => {
+  if (location.protocol !== 'https:' || !/\.github\.io$/.test(location.hostname)) return;
+  let base = null, checking = false, lastChk = 0;
+  const stamp = () => fetch(location.pathname, { method: 'HEAD', cache: 'no-store' }).then(r => r.ok ? (r.headers.get('etag') || r.headers.get('last-modified')) : null).catch(() => null);
+  stamp().then(s => { if (s && !base) base = s; });
+  const check = () => { const t = Date.now(); if (checking || navigator.onLine === false || t - lastChk < 30000) return; checking = true; lastChk = t;
+    stamp().then(s => { checking = false; if (!s) return; if (!base){ base = s; return; }
+      if (s !== base){ updatePending = true; if (mode === 'title') location.reload(); } }); };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+  window.addEventListener('focus', check); window.addEventListener('online', check);
+})();
 requestAnimationFrame(loop);
 })();
 </script>
