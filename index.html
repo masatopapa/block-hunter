@@ -21,13 +21,13 @@ body{font-family:var(--font-disp);color:var(--paper);-webkit-user-select:none;us
 #ov{position:absolute;left:0;top:0;width:540px;height:1060px;transform-origin:0 0;display:none;align-items:center;justify-content:center;background:rgba(30,18,8,.72)}
 #ov.on{display:flex}
 .card{width:420px;box-sizing:border-box;padding:30px 28px 26px;border-radius:26px;background:linear-gradient(#fff8e8,#f3e2c0);color:var(--ink);text-align:center;box-shadow:0 14px 0 #8a5a2b,0 24px 40px rgba(0,0,0,.45);border:4px solid #c08a4d}
-.card h1{margin:0 0 8px;font-size:44px;font-weight:900;letter-spacing:.02em;line-height:1.15}
+.card h1{margin:0 0 8px;font-size:42px;font-weight:900;letter-spacing:0;line-height:1.15;white-space:nowrap}   /* 「ブロックハンター」を1行に（44px だと最後の「ー」だけ2行目に落ちていた） */
 .card h2{margin:0 0 10px;font-size:34px;font-weight:900;line-height:1.2}
 .card p{margin:6px 0 0;font-size:19px;font-weight:700;line-height:1.5;color:#5a4330}
 .card .sub{font-size:16px;color:#7b6248}
 .btn{display:block;width:100%;box-sizing:border-box;margin-top:16px;padding:16px 10px;border:0;border-radius:18px;font-family:var(--font-disp);font-weight:900;font-size:26px;line-height:1;color:#fff;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 .btn.go{background:linear-gradient(#ffb43a,#f08a12);box-shadow:0 6px 0 #a85a06;text-shadow:0 2px 0 rgba(0,0,0,.25)}
-.btn.sub{background:linear-gradient(#8fb4c9,#5f879e);box-shadow:0 6px 0 #37586b;font-size:21px;padding:13px 10px}
+.btn.sub{background:linear-gradient(#8fb4c9,#5f879e);box-shadow:0 6px 0 #37586b;font-size:21px;padding:13px 10px;color:#111}   /* 字は黒（色の指定が無く .card .sub の茶色が付いて読みにくかった） */
 .btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
 .btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
 .ants{font-size:40px;line-height:1;margin-bottom:6px}
