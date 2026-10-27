@@ -858,7 +858,9 @@ function update(dt){
   for (let k = G.rip.length - 1; k >= 0; k--){ const p = G.rip[k]; p.t += dt; if (p.t > 0.4) G.rip.splice(k, 1); }
   if (G.shake > 0) G.shake = Math.max(0, G.shake - dt);
   // クリア判定
-  if (G.left <= 0){ G.winT += rdt; if (G.ants.length === 0 || G.winT > 2.5){ mode = 'clear'; chime(); showClear(); } return; }
+  if (G.left <= 0){
+    if (!G.won){ G.won = true; saveBest(L.lv + 1); }   // 食べ尽くした瞬間に次の面を保存（クリア画面が出る前の最大2.5秒に↻→タイトルへ戻っても次の面から）
+    G.winT += rdt; if (G.ants.length === 0 || G.winT > 2.5){ mode = 'clear'; chime(); showClear(); } return; }
   // お手上げ判定: 枠が全部埋まり、どの枠も食べる物が無く、歩いているアリもいない
   G.stuckT += rdt;
   if (G.stuckT > 0.5){ G.stuckT = 0;
