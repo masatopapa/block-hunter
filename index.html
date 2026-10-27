@@ -38,6 +38,8 @@ body{font-family:var(--font-disp);color:var(--paper);-webkit-user-select:none;us
 .cp:focus-visible{outline:3px solid #f08a12;outline-offset:2px}
 .help{text-align:left;font-size:17px;line-height:1.55;margin:12px 0 0;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.55);color:#4a3523}
 .help b{color:#c2410c}
+.card p.credit{margin:18px 0 0;font-size:15px;font-weight:700;color:#9a7f62;letter-spacing:.02em}   /* タイトル画面の一番下: 作った人とプロフィールページへのリンク */
+.credit a{color:#c2410c;text-decoration:underline;text-underline-offset:3px;-webkit-tap-highlight-color:transparent}
 </style>
 </head>
 <body>
@@ -997,7 +999,8 @@ function showTitle(){ mode = 'title';
   const cps = []; for (let lv = 1; lv <= bestLv; lv += 10) cps.push(lv);
   const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
   showOv(`<div class="ants">🐜🐜🐜</div><h1>ブロックハンター</h1><p>色ごとのアリを送って、ドット絵の食べ物・乗り物・家電・名画を食べ尽くそう！</p>
-    <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}<button class="btn sub" id="bHelp">あそびかた</button>`);
+    <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}<button class="btn sub" id="bHelp">あそびかた</button>
+    <p class="credit">Made by <a href="https://mastopapa.com/profile/" target="_blank" rel="noopener">Masato Papa</a></p>`);
   document.getElementById('bCont').onclick = () => startLevel(bestLv, Date.now() & 0xffffff);
   card.querySelectorAll('.cp').forEach(b => { b.onclick = () => startLevel(parseInt(b.dataset.lv, 10), Date.now() & 0xffffff); });
   document.getElementById('bHelp').onclick = () => showHelp(showTitle);
