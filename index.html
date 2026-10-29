@@ -303,6 +303,73 @@ const VEHICLES = [
     for (let x = 1; x < 24; x += 4) P.e(x + 1, 20.3, 1.6, 0.6, COL.lblue);
   }}
 ];
+// ---------- はたらくくるま8種（10/30 本人依頼。2周目以降にも出るよう、ブロック200以上・6色以上で描く。白い車体は灰色の縁取り） ----------
+const WORKCARS = [
+  { name:'しょうぼうしゃ', bw:32, bh:18, draw(P){
+    P.r(2,2,22,4.6,COL.gray);
+    for (let x = 3.2; x < 21; x += 2.8) P.r(x, 3, x + 1.2, 4, 0);   // はしごの段
+    P.r(1,5,24.5,14,COL.red).p([[24,14],[24,3.5],[28.5,3.5],[31,8],[31,14]], COL.red).r(25.5,2,28,3.5,COL.red)
+     .r(3,6.2,9.5,9,COL.gray).r(10.5,6.2,16.5,9,COL.gray).r(17.5,6.2,22.5,9,COL.gray)
+     .p([[25,4.5],[28,4.5],[30,8],[25,8]], COL.lblue).r(1,10,31,11,COL.white).r(1,12.8,31,14,COL.dkgray).c(30.3,11.8,0.9,COL.yellow);
+    for (const x of [6.5, 12, 26]) P.c(x, 14.8, 2.7, COL.black).c(x, 14.8, 1.1, COL.gray);
+  }},
+  { name:'パトカー', bw:28, bh:16, draw(P){
+    P.p([[7,7.5],[9.8,3],[18.8,3],[22,7.5]], COL.gray).p([[8,7.5],[10.3,3.8],[18.3,3.8],[21,7.5]], COL.white).r(11.5,1.2,17,3,COL.red)
+     .r(1,7,27,12.5,COL.black).c(2.6,10,2.6,COL.black).c(25.4,10,2.6,COL.black).r(7.5,7,21.5,11.6,COL.white)
+     .p([[8.6,7],[10.8,4.2],[14,4.2],[14,7]], COL.lblue).p([[15,4.2],[18,4.2],[20.4,7],[15,7]], COL.lblue).l(14.5,7,14.5,11.5,0.5,COL.gray)
+     .c(26.6,9,0.9,COL.yellow).c(1.4,9,0.9,COL.red);
+    for (const x of [7, 21]) P.c(x, 12.5, 2.6, COL.dkgray).c(x, 12.5, 1.1, COL.gray);
+  }},
+  { name:'きゅうきゅうしゃ', bw:30, bh:18, draw(P){
+    P.p([[1,3],[21.5,3],[24,4],[28.6,8.5],[29,9.5],[29,14],[1,14]], COL.gray)
+     .p([[1.8,3.8],[21.3,3.8],[23.5,4.7],[27.9,8.9],[28.2,9.7],[28.2,13.2],[1.8,13.2]], COL.white)
+     .r(3,1.6,5.5,3,COL.red).r(19,1.2,22.5,3,COL.red)
+     .r(3,5,7.5,8,COL.lblue).r(9,5,13.5,8,COL.lblue).r(18,5,22,8.4,COL.lblue).p([[23,5],[24.2,5],[27.4,8.4],[23,8.4]], COL.lblue)
+     .r(1.8,9.2,28.2,10.6,COL.red).r(1.8,11.4,28.2,12,COL.red).r(1,12.8,29,14,COL.dkgray).c(28.3,8.8,0.8,COL.yellow);
+    for (const x of [7, 23.5]) P.c(x, 14.6, 2.6, COL.black).c(x, 14.6, 1.1, COL.gray);
+  }},
+  { name:'ショベルカー', bw:30, bh:24, draw(P){
+    P.r(3,19,17,23,COL.black).c(3.5,21,2,COL.black).c(16.5,21,2,COL.black);
+    for (const x of [4.5, 8, 11.5, 15]) P.c(x, 21, 1.1, COL.gray);
+    P.r(5,17.5,15,19,COL.dkgray).r(1,11.5,17,17.5,COL.yellow).r(1,15.3,17,16.2,COL.black)
+     .r(3,4,10,11.5,COL.yellow).r(4.2,5.2,9,10.2,COL.lblue).c(6.5,3.3,1,COL.orange)
+     .l(11,13,20,4,2.6,COL.yellow).l(13.5,13,18.5,8,0.9,COL.gray).l(20,4,26,13.5,2,COL.yellow).c(20,4,0.9,COL.dkgray)
+     .p([[23.5,12.5],[28.5,12.5],[29,16.5],[27,19.6],[24.5,19.4],[24,17]], COL.dkgray).e(26.2,12.6,2.6,1.4,COL.brown)
+     .p([[24.6,19],[25.4,21],[26.2,19.2]], COL.gray).p([[26.3,19.2],[27.1,21],[27.8,18.6]], COL.gray);
+  }},
+  { name:'ブルドーザー', bw:32, bh:20, draw(P){
+    P.r(3,15,21,19.5,COL.black).c(3.5,17.25,2.25,COL.black).c(20.5,17.25,2.25,COL.black);
+    for (const x of [4.5, 8.5, 12.5, 16.5, 20]) P.c(x, 17.25, 1.1, COL.gray);
+    P.r(10,8,22,15,COL.orange).r(19.5,9,21.5,14,COL.dkgray).r(15,4.5,16.2,8,COL.black)
+     .r(4,2.5,11,15,COL.orange).r(3.5,1.8,11.5,2.8,COL.dkgray).r(5.2,3.7,9.8,8.8,COL.lblue).c(7.5,1.1,0.9,COL.yellow)
+     .l(14,14.5,25,13.5,1.4,COL.dkorange).l(17,9.5,24.5,10.5,0.9,COL.gray)
+     .p([[25,7.5],[28.5,7],[29.5,8.5],[28.6,9.5],[28.6,17.5],[30,19.6],[25,19.6]], COL.orange).r(25,18.6,30,19.6,COL.black);
+  }},
+  { name:'ミキサーしゃ', bw:34, bh:19, draw(P){
+    P.p([[0.8,0.6],[4.4,0.6],[3.8,3.6],[2.2,3.6]], COL.gray)
+     .p([[2,5],[4,2.5],[9,1.5],[16,2],[21,4],[24,7.5],[23.5,11],[20,13],[8,13],[4,10.5]], COL.gray)
+     .p([[2.9,5.2],[4.6,3.3],[9.1,2.3],[15.8,2.8],[20.5,4.7],[23.1,7.7],[22.7,10.5],[19.7,12.2],[8.3,12.2],[4.6,9.9]], COL.white)
+     .l(10,3.2,7.5,11.3,1.2,COL.navy).l(15,3.4,12.5,11.6,1.2,COL.navy).l(20,5.2,17.5,11.6,1.2,COL.navy)
+     .r(2,13,32,14.6,COL.dkgray).p([[25,14],[25,4],[30,4],[33,8.5],[33,14]], COL.blue).p([[26,5],[29.4,5],[31.6,8.5],[26,8.5]], COL.lblue)
+     .r(25,13.2,33,14.6,COL.dkgray).c(32.4,11.5,0.9,COL.yellow);
+    for (const x of [7, 12.5, 28.5]) P.c(x, 15.8, 2.5, COL.black).c(x, 15.8, 1, COL.gray);
+  }},
+  { name:'ゴミしゅうしゅうしゃ', bw:32, bh:18, draw(P){
+    P.r(4,3.5,23,13,COL.green).r(4,9,23,10,COL.white).p([[0.8,6],[4.5,3],[4.5,13],[0.8,13]], COL.dkgreen)
+     .r(1.3,8.5,3.8,12.4,COL.black).c(2.5,11,1,COL.white)
+     .p([[24,13],[24,3.5],[28.6,3.5],[31.2,8],[31.2,13]], COL.gray).p([[24.8,13],[24.8,4.3],[28.2,4.3],[30.4,8.2],[30.4,13]], COL.white)
+     .p([[25.6,5],[28,5],[29.6,8],[25.6,8]], COL.lblue).r(26,2.2,27.8,3.6,COL.yellow).r(2,12.6,31.2,14,COL.dkgray);
+    for (const x of [8, 26.5]) P.c(x, 14.6, 2.6, COL.black).c(x, 14.6, 1.1, COL.gray);
+  }},
+  { name:'でんしゃ', bw:34, bh:18, draw(P){
+    P.r(12.5,0.5,18.5,1.3,COL.black).l(13,3.8,15.5,1.2,0.9,COL.black).l(18,3.8,15.5,1.2,0.9,COL.black).r(2,3.6,30,5,COL.gray)
+     .p([[1,5],[29.5,5],[32.2,6.2],[33.5,9.5],[33.5,14],[1,14]], COL.orange).r(1,10.5,33.5,14,COL.green);
+    for (const x of [3, 7.5, 17.5, 22]) P.r(x, 6.3, x + 3.2, 9.2, COL.lblue);
+    P.r(12.5,6,15.5,14,COL.gray).r(13,6.6,15,9.2,COL.lblue).p([[27,6.3],[29.6,6.3],[32,7.2],[32.8,9.2],[27,9.2]], COL.lblue)
+     .c(32.6,12,0.8,COL.yellow).r(2,14,32,14.8,COL.dkgray).r(0,17.3,34,18,COL.dkgray);
+    for (const x of [5, 8.6, 23.5, 27.1]) P.c(x, 15.8, 1.7, COL.black);
+  }}
+];
 // ---------- 道具6種 ----------
 const TOOLS = [
   { name:'ハンマー', bw:20, bh:22, draw(P){
@@ -800,7 +867,7 @@ function applyDetail(g, W, H, d){
 }
 // 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
 function buildOrder(filter, withPaintings){
-  const base = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
+  const base = [...FOODS, ...VEHICLES, ...WORKCARS, ...APPLIANCES, ...TOOLS, ...ANIMALS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
   base.sort((a, b) => a.n - b.n);
   const paints = withPaintings ? PAINTINGS.slice() : [];
   const total = base.length + paints.length, first = Math.min(10, total), last = total;
@@ -1346,7 +1413,7 @@ fit();
 // ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
-if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
+if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...WORKCARS, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
 // 動作確認用: ?sim=17 で、その面の並び10通りについて各シミュレーション（C=慎重 A=せっかち I=少しずつ、小文字=ランダム混じり）の合否を title に出す
 if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = levelSpec(lv); const R = mulberry32(5); let k = spec.k, ras = rasterPic(spec.food, k);
   const { W, H, g } = ras; applyDetail(g, W, H, spec.detail); spec.chunk = Math.max(spec.chunk, blockCount(g) / 36); const out = [];
