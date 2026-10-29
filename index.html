@@ -552,6 +552,94 @@ const ANIMALS = [
      .c(4.5,8,1.6,COL.white).c(4.8,8,0.8,COL.black).l(1.5,10.5,3,10.5,0.6,COL.black);
   }}
 ];
+// ---------- 虫8種（10/30 本人依頼。顔を描いてかわいく、脚は短い線だけ。葉・花・枝を添えて6色以上に） ----------
+const INSECTS = [
+  { name:'てんとうむし', bw:26, bh:26, draw(P){
+    P.p([[0.5,22],[5,16.5],[13,14.5],[21,15],[25.5,18.5],[22,23.5],[12,25.5],[3,25]], COL.green).l(2,23.5,24.5,17.5,0.8,COL.dkgreen).c(21.5,22,1.3,COL.lblue)
+     .l(11.5,3.5,9.5,0.8,0.7,COL.black).l(14.5,3.5,16.5,0.8,0.7,COL.black);
+    for (const y of [12, 16, 20]) P.l(2.5, y, 23.5, y, 0.9, COL.black);   // あし（甲らの下から出す）
+    P.c(13,14.5,8.5,COL.red).c(13,6.5,4.2,COL.black).l(13,10.5,13,22.8,0.8,COL.black)
+     .c(8.8,13,1.7,COL.black).c(17.2,13,1.7,COL.black).c(8.2,18,1.6,COL.black).c(17.8,18,1.6,COL.black).c(10.7,21,1.1,COL.black).c(15.3,21,1.1,COL.black)
+     .e(7.2,11,1.1,0.7,COL.white).c(11.2,5.8,1.2,COL.white).c(14.8,5.8,1.2,COL.white).c(11.4,6,0.55,COL.black).c(15,6,0.55,COL.black)
+     .c(10.4,8.4,0.75,COL.pink).c(15.6,8.4,0.75,COL.pink);
+  }},
+  { name:'ちょうちょ', bw:28, bh:23, draw(P){
+    P.l(13,4,10,0.8,0.7,COL.black).l(15,4,18,0.8,0.7,COL.black).c(10,0.9,0.8,COL.black).c(18,0.9,0.8,COL.black);
+    for (const s of [-1, 1]) P.e(14 + s * 7, 8.5, 6.6, 6, COL.black).e(14 + s * 7, 8.6, 5.5, 4.9, COL.orange).c(14 + s * 8.5, 7, 1.7, COL.blue).c(14 + s * 5, 10.5, 1.1, COL.white)
+      .e(14 + s * 5.5, 17, 4.8, 4.6, COL.black).e(14 + s * 5.5, 17, 3.8, 3.6, COL.yellow).c(14 + s * 6, 17.5, 1.2, COL.pink);
+    P.e(14,13,1.9,8.5,COL.black).c(14,4.8,2.8,COL.black).c(13,4.6,0.8,COL.white).c(15,4.6,0.8,COL.white);
+  }},
+  { name:'ミツバチ', bw:26, bh:24, draw(P){
+    P.e(9.5,5.5,3.6,4,COL.gray).e(9.5,5.5,2.9,3.3,COL.white).e(14.5,5,3.6,4,COL.gray).e(14.5,5,2.9,3.3,COL.white)
+     .p([[3,14],[0.3,15],[3,16]], COL.black).e(11,14,8,6,COL.yellow).e(7.5,14,1.1,5,COL.black).e(11.3,14,1.1,5.7,COL.black).e(15,14,1.1,5,COL.black)
+     .l(19.5,8,18.5,3.5,0.6,COL.black).l(22,8,23.5,3.5,0.6,COL.black).c(18.5,3.5,0.8,COL.black).c(23.5,3.5,0.8,COL.black)
+     .c(20.8,11.5,4.3,COL.yellow).c(22.2,10.6,1.1,COL.black).c(22.5,10.2,0.4,COL.white).c(23.4,13,0.8,COL.pink).l(20.6,13.6,22,14,0.5,COL.black)
+     .l(20,23.5,20,20,0.8,COL.green).c(18.3,20,1.4,COL.pink).c(21.7,20,1.4,COL.pink).c(20,18.3,1.4,COL.pink).c(20,21.7,1.4,COL.pink).c(20,20,1.1,COL.orange);
+  }},
+  { name:'カブトムシ', bw:28, bh:24, draw(P){
+    P.r(0,19,28,23,COL.lbrown).l(2,20.5,9,20.5,0.6,COL.brown).l(13,21.8,22,21.8,0.6,COL.brown)   // とまっている枝
+     .e(24.5,18,3.5,1.6,COL.green).l(22,18.5,27,17.5,0.5,COL.dkgreen)
+     .l(7,14,4.5,19.5,0.9,COL.black).l(12,15,11.5,19.5,0.9,COL.black).l(17,14,19,19.5,0.9,COL.black)
+     .e(10.5,11.5,8.5,5.5,COL.dkbrown).e(8.5,9,3.5,1.3,COL.brown).l(2.5,11.5,18,11,0.5,COL.black)
+     .e(19.5,11.5,3.5,3.8,COL.dkbrown).p([[17.5,9],[19.5,5.5],[20.3,9]], COL.dkbrown)
+     .p([[20.5,10.5],[23,7],[24.5,2.5],[26,0.5],[26.5,2.5],[25.5,7.5],[22.8,12]], COL.dkbrown).p([[25,3.5],[27.5,2.5],[26,5]], COL.dkbrown)
+     .c(21.6,12.6,1,COL.white).c(21.8,12.7,0.5,COL.black);
+  }},
+  { name:'トンボ', bw:30, bh:24, draw(P){   // 赤とんぼ（上から見た形）
+    for (const [x, rx, ry, dy] of [[18, 2.7, 5.7, 6], [12.5, 2.5, 5.3, 5.7]]) for (const s of [-1, 1])
+      P.e(x, 12 + s * dy, rx, ry, COL.gray).e(x, 12 + s * dy, rx - 0.7, ry - 0.7, COL.lblue);
+    P.r(1.5,10.8,15.5,13.2,COL.red).c(1.6,12,1.2,COL.red);
+    for (const x of [4.5, 7.5, 10.5, 13.5]) P.l(x, 10.8, x, 13.2, 0.6, COL.dkred);   // 節（.5 に置かないと基準サイズで消える）
+    P.e(18.5,12,3.2,2.6,COL.red).c(25,12,3.6,COL.red).c(25.6,10,1.7,COL.white).c(25.6,14,1.7,COL.white).c(26.2,10,0.75,COL.black).c(26.2,14,0.75,COL.black);
+  }},
+  { name:'カタツムリ', bw:26, bh:22, draw(P){
+    P.p([[0.5,19],[6,16.5],[16,16],[25.5,18],[20,21.5],[8,21.8],[2,21]], COL.green).l(1.5,19.5,24,18.2,0.7,COL.dkgreen)
+     .e(13,16,10,2.4,COL.tan).e(21.5,11.5,2.7,5.2,COL.tan).l(20.5,7.5,19.5,3,0.8,COL.tan).l(22.5,7.5,23.5,3,0.8,COL.tan)
+     .c(19.5,2.6,1.2,COL.black).c(23.5,2.6,1.2,COL.black).c(19.8,2.3,0.45,COL.white).c(23.8,2.3,0.45,COL.white).c(23.2,11.8,0.8,COL.pink).l(21.2,12.5,22.4,12.8,0.5,COL.black)
+     .c(11,9.5,7,COL.brown).c(11,9.5,5.7,COL.orange).c(11.7,9,4.2,COL.brown).c(11.7,9,3,COL.orange).c(12.3,8.6,1.6,COL.brown);
+  }},
+  { name:'バッタ', bw:30, bh:20, draw(P){
+    P.r(0,17.2,30,19.5,COL.brown).l(3,18.3,10,18.3,0.5,COL.dkbrown).l(17,18.6,26,18.6,0.5,COL.dkbrown)
+     .l(24.5,5.5,29.5,0.5,0.6,COL.dkgreen).l(22.8,5.5,26.5,0.3,0.6,COL.dkgreen).l(20.5,12,21.5,17.2,0.8,COL.dkgreen).l(17.5,12.5,16.5,17.2,0.8,COL.dkgreen)
+     .e(14,10,9,3.6,COL.green).e(14.5,12,6,1.2,COL.yellow).e(23,9,3.8,4,COL.green).p([[4,8.6],[18,6.2],[19,8],[5,10.6]], COL.dkgreen)
+     .l(16,11,6.5,6.5,2.6,COL.dkgreen).l(16,11,6.5,6.5,1.4,COL.green).l(6.5,6.5,4.5,17.2,0.9,COL.dkgreen)   // うしろあし
+     .c(24,8,1.4,COL.white).c(24.4,8,0.7,COL.black).c(25.5,11,0.8,COL.pink);
+  }},
+  { name:'セミ', bw:26, bh:28, draw(P){   // 羽は体より長く、しっぽ側をとがらせる（丸いとカナブンのように見えた）
+    for (const [y0, y1] of [[11, 10], [14.5, 16]]) P.l(13, y0, 3, y1, 0.8, COL.black).l(13, y0, 23, y1, 0.8, COL.black);   // あし
+    P.p([[12.8,8],[7.5,8.5],[4.8,12],[5.2,18.5],[8,24],[11,27.5],[12.8,25]], COL.gray).p([[13.2,8],[18.5,8.5],[21.2,12],[20.8,18.5],[18,24],[15,27.5],[13.2,25]], COL.gray)
+     .p([[12,9.2],[8,9.6],[5.8,12.4],[6.2,18.2],[8.8,23.2],[11,25.8],[12,24]], COL.lblue).p([[14,9.2],[18,9.6],[20.2,12.4],[19.8,18.2],[17.2,23.2],[15,25.8],[14,24]], COL.lblue)
+     .l(7.5,12.5,10.8,25,0.7,COL.gray).l(18.5,12.5,15.2,25,0.7,COL.gray).l(6.5,13.5,11.5,13,0.6,COL.gray).l(19.5,13.5,14.5,13,0.6,COL.gray)
+     .e(13,9.8,4.4,2.4,COL.black).c(11,9.9,0.9,COL.green).c(15,9.9,0.9,COL.green).e(13,5.6,6,2.6,COL.black).e(13,4.8,1.4,0.9,COL.green)
+     .c(6.8,5.2,1.8,COL.white).c(19.2,5.2,1.8,COL.white).c(7.1,5.4,0.8,COL.black).c(18.9,5.4,0.8,COL.black).c(10.2,6.9,0.7,COL.pink).c(15.8,6.9,0.7,COL.pink);
+  }}
+];
+// ---------- 楽器3種（10/30 本人依頼） ----------
+const INSTRUMENTS = [
+  { name:'ギター', bw:18, bh:30, draw(P){
+    P.r(6.8,0.3,11.2,3.6,COL.dkbrown).c(6,1.2,0.8,COL.gray).c(6,2.8,0.8,COL.gray).c(12,1.2,0.8,COL.gray).c(12,2.8,0.8,COL.gray)
+     .c(9,13.5,5.4,COL.brown).c(9,22.5,6.9,COL.brown).c(9,13.5,4.6,COL.orange).c(9,22.5,6.1,COL.orange).c(9,14,3.3,COL.yellow).c(9,22,4.6,COL.yellow)
+     .r(7.8,3,10.2,11.5,COL.dkbrown);
+    for (const y of [4.5, 6.5, 8.5, 10.5]) P.l(7.8, y, 10.2, y, 0.5, COL.gray);
+    P.c(9,14.5,2.3,COL.black).r(6,23.5,12,24.8,COL.dkbrown);
+  }},
+  { name:'ドラム', bw:30, bh:24, draw(P){
+    const st = []; for (let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 1.5 : 3.4; st.push([15 + r * Math.cos(a), 15.5 + r * Math.sin(a)]); }
+    P.l(4,5.5,4,22.5,0.7,COL.dkgray).l(4,22.5,1.5,23.5,0.7,COL.dkgray).l(4,22.5,6.5,23.5,0.7,COL.dkgray).e(4,5.2,3.8,0.9,COL.yellow)   // シンバル
+     .l(26.5,3.5,26.5,11.5,0.7,COL.dkgray).e(26.5,3.2,3.4,0.9,COL.yellow)
+     .r(1.5,12.5,7,16,COL.gray).e(4.25,12.5,2.75,1,COL.white)   // スネア
+     .r(23,11.5,29,18.5,COL.red).e(26,11.5,3,1.1,COL.white).l(23.8,18.5,23.3,23.5,0.7,COL.dkgray).l(28.2,18.5,28.7,23.5,0.7,COL.dkgray)   // フロアタム
+     .l(8.5,20.5,6,23.5,0.8,COL.gray).l(21.5,20.5,24,23.5,0.8,COL.gray)
+     .c(15,15.5,7.6,COL.red).c(15,15.5,6.4,COL.white).p(st, COL.yellow)   // バスドラム
+     .r(8.3,5.5,13.7,9.5,COL.red).e(11,5.5,2.7,1.1,COL.white).r(16.3,5.5,21.7,9.5,COL.red).e(19,5.5,2.7,1.1,COL.white)   // タム
+     .r(13.5,22.2,16.5,23.8,COL.black);
+  }},
+  { name:'木琴', bw:29, bh:22, draw(P){
+    P.l(0.5,3.2,28.5,8.4,1.3,COL.brown).l(0.5,15.3,28.5,10.1,1.3,COL.brown);
+    [COL.red, COL.orange, COL.yellow, COL.green, COL.lblue, COL.blue, COL.purple].forEach((col, i) => P.r(1.5 + i * 3.8, 1 + i * 0.7, 4.5 + i * 3.8, 17 - i * 0.7, col));
+    P.l(3,21.3,13,18.8,0.8,COL.brown).c(13.6,18.6,1.4,COL.red).l(11,21.5,22,19,0.8,COL.brown).c(22.6,18.8,1.4,COL.red);
+  }}
+];
 for (const p of PAINTINGS) p.paint = true;
 // まさとパパのイラスト（tools/masato_grid.py で作成。お金チャンネルのアイコンの元）。. は空き
 const MASATO_PAL = { k:'#242424', s:'#f9c39a', o:'#e08452', n:'#34528f', w:'#fbf8f1' };
@@ -867,7 +955,7 @@ function applyDetail(g, W, H, d){
 }
 // 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
 function buildOrder(filter, withPaintings){
-  const base = [...FOODS, ...VEHICLES, ...WORKCARS, ...APPLIANCES, ...TOOLS, ...ANIMALS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
+  const base = [...FOODS, ...VEHICLES, ...WORKCARS, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
   base.sort((a, b) => a.n - b.n);
   const paints = withPaintings ? PAINTINGS.slice() : [];
   const total = base.length + paints.length, first = Math.min(10, total), last = total;
@@ -1413,7 +1501,7 @@ fit();
 // ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
-if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...WORKCARS, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...PAINTINGS, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
+if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...VEHICLES, ...WORKCARS, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS, ...PAINTINGS, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
 // 動作確認用: ?sim=17 で、その面の並び10通りについて各シミュレーション（C=慎重 A=せっかち I=少しずつ、小文字=ランダム混じり）の合否を title に出す
 if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = levelSpec(lv); const R = mulberry32(5); let k = spec.k, ras = rasterPic(spec.food, k);
   const { W, H, g } = ras; applyDetail(g, W, H, spec.detail); spec.chunk = Math.max(spec.chunk, blockCount(g) / 36); const out = [];
