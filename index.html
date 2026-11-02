@@ -1443,8 +1443,8 @@ function confetti(){
 function showTitle(){
   if (updatePending){ location.reload(); return; }   // 新しい版があればタイトルに戻るときに読み込み直す（到達レベルは保存済み）
   mode = 'title';
-  // 10面ごとのチェックポイント（1・11・21…のうち到達した分）からやり直せる。200面からは20面ごと（201・221・241…）＝ボタンが増えすぎてカードが画面からはみ出すため（11/2 本人指示）
-  const cps = []; for (let lv = 1; lv <= bestLv; lv += lv >= 200 ? 20 : 10) cps.push(lv);
+  // 10面ごとのチェックポイント（1・11・21…のうち到達した分）からやり直せる。201面に達したら101面以降を20面ごと（101・121・141…）＝ボタンが増えすぎてカードが画面からはみ出すため（11/2 本人指示）
+  const cps = []; for (let lv = 1; lv <= bestLv; lv += bestLv >= 201 && lv >= 101 ? 20 : 10) cps.push(lv);
   const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
   const loopHtml = bestLv >= LOOP_LV ? `<p class="loop">${LOOP_LV}面以降は繰り返しになります</p>` : '';   // くり返しの面まで来た人にだけ出す
   showOv(`<div class="ants">🐜🐜🐜</div><h1>ブロックハンター</h1><p class="lead">色ごとのアリを送って、ドット絵の<br>食べ物・乗り物・家電・名画を食べ尽くそう！</p>
