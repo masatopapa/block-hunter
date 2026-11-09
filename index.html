@@ -1713,7 +1713,9 @@ const SLOT_Y = 636, SLOT_H = 80, SLOT_W = 78;
 const TILE_Y = 748, TILE_H = 70, TILE_W = 78, ROW_GAP = 78, ROWS_SHOWN = 4;
 const colX = i => 270 + (i - 2) * 92;
 const SPD = 215;                 // アリの速さ px/s
-const DISPATCH = 0.16;           // 1匹出すごとの間隔 s
+const DISPATCH = 0.16;           // 1匹出すごとの間隔 s（フレームの刻みで切り上がるので、実際は 1/6 秒＝壺1つから毎秒6匹）
+// 500面以降は送り出しを1.2倍（11/9 本人指示）＝毎秒7.2匹。0.16/1.2 だとフレームの刻みで1.25倍か1.11倍になるので、間隔 1/6/1.2 を端数ごと持ち越して数える
+const DISPATCH_UP_LV = 500, DISPATCH_UP = 1.2;
 
 // ---------- ゲーム状態 ----------
 let L = null;                    // 今のレベル（makeLevel の結果）
@@ -1832,7 +1834,7 @@ function update(dt){
   // 枠から送り出す
   G.slots.forEach((s, si) => { if (!s) return; s.arr += dt;
     if (s.n <= 0){ G.slots[si] = null; return; }   // 全員出発したら枠が空く
-    if (now >= s.tNext){ if (dispatch(s, si)) s.tNext = now + DISPATCH; else s.tNext = now + 0.22; }
+    if (now >= s.tNext){ if (dispatch(s, si)) s.tNext = L.lv >= DISPATCH_UP_LV ? Math.max(s.tNext, now - 1 / 60) + 1 / 6 / DISPATCH_UP : now + DISPATCH; else s.tNext = now + 0.22; }
   });
   updateAnts(dt);
   for (let k = G.parts.length - 1; k >= 0; k--){ const p = G.parts[k]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * dt; if (p.t > 0.4) G.parts.splice(k, 1); }
