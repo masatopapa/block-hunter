@@ -964,8 +964,229 @@ const PAINTINGS3 = [
      .p([[12.8,16],[13.2,8],[14.8,8],[15.2,16]], COL.tan).c(14,6,1.4,COL.tan);
   }}
 ];
-for (const p of PAINTINGS) p.paint = true;
-for (const p of PAINTINGS3) p.paint = true;
+// ---------- 11/11 追加（本人依頼）: 世界の建物5・全身の動物6・宇宙3／6周目から出す名画風5 ----------
+const BUILDINGS = [
+  { name:'エッフェル塔', bw:22, bh:28, draw(P){
+    P.e(11,26.6,10.6,1.3,COL.green).c(1.8,25.4,1.5,COL.dkgreen).c(20.2,25.4,1.5,COL.dkgreen)   // しばふと植えこみ
+     .p([[0.6,26.5],[21.4,26.5],[15.6,15],[13.4,8],[12.4,2.5],[9.6,2.5],[8.6,8],[6.4,15]], COL.brown).e(11,26.5,4.4,6.4,0)   // 塔（足の間はアーチ形に抜く）
+     .l(2.2,25.5,6.8,19.5,0.6,COL.dkbrown).l(5.4,25.5,5.6,19.5,0.6,COL.dkbrown).l(19.8,25.5,15.2,19.5,0.6,COL.dkbrown).l(16.6,25.5,16.4,19.5,0.6,COL.dkbrown)   // 鉄骨の線
+     .l(7.6,16.5,9.2,11.5,0.6,COL.dkbrown).l(14.4,16.5,12.8,11.5,0.6,COL.dkbrown).l(11,16.5,11,11.5,0.6,COL.dkbrown).l(11,9.5,11,5.5,0.6,COL.dkbrown)
+     .r(4.6,17.4,17.4,19.2,COL.dkbrown).r(5.6,17.9,16.4,18.7,COL.lblue)   // 第1展望台
+     .r(7.6,10.2,14.4,11.7,COL.dkbrown).r(8.4,10.6,13.6,11.3,COL.lblue)   // 第2展望台
+     .r(9.2,4.4,12.8,5.5,COL.dkbrown).l(11,0.4,11,2.6,0.8,COL.dkgray).c(11,2.6,1,COL.yellow);   // てっぺん
+  }},
+  { name:'自由の女神', bw:20, bh:28, draw(P){
+    P.p([[2,27.5],[18,27.5],[16,25],[4,25]], COL.gray).r(5.5,20.5,14.5,25.2,COL.tan).r(4.8,24,15.2,25.2,COL.lbrown).r(5,20.2,15,21.4,COL.lbrown)   // 台座
+     .l(8.6,10.5,5.6,4.6,2,COL.mint)   // 上げた腕
+     .p([[6.2,20.5],[14.4,20.5],[13.3,9.3],[7.5,9.3]], COL.mint).l(9.2,12,8.6,20,0.6,COL.dkgreen).l(11.6,13,12.4,20,0.6,COL.dkgreen)   // 衣
+     .p([[12.2,10.6],[15,9.8],[15.6,14.4],[12.9,15.2]], COL.dkgreen).l(12.4,10.4,13.4,13.6,1.4,COL.mint);   // 銘板と左腕
+    for (const a of [-165, -135, -105, -75, -45, -15]){ const t = a * Math.PI / 180; P.l(10.3 + 1.4 * Math.cos(t), 5.8 + 1.4 * Math.sin(t), 10.3 + 4 * Math.cos(t), 5.8 + 4 * Math.sin(t), 0.9, COL.mint); }   // かんむりのトゲ
+    P.c(10.3,7.3,2.3,COL.mint).r(8.2,5.2,12.4,6.1,COL.dkgreen).c(9.6,7.5,0.35,COL.dkgreen).c(11,7.5,0.35,COL.dkgreen)
+     .r(4.7,2.9,6.5,4.7,COL.yellow).p([[4.3,2.9],[6.9,2.9],[6.2,1.3],[5.6,0.2],[5,1.4]], COL.orange).c(5.6,2.1,0.55,COL.yellow);   // たいまつ
+  }},
+  { name:'ピラミッドとスフィンクス', bw:28, bh:22, draw(P){
+    P.c(23.5,4,2.6,COL.orange)
+     .p([[15.5,16.5],[22,7],[28,16.5]], COL.lbrown).p([[22,7],[28,16.5],[23.5,16.5]], COL.brown)   // 奥のピラミッド
+     .p([[0.5,17],[11,3],[21,17]], COL.tan).p([[11,3],[21,17],[14,17]], COL.lbrown)   // 手前のピラミッド
+     .p([[0,22],[0,16.6],[28,16.2],[28,22]], COL.yellow)   // 砂
+     .l(4.5,21.2,22,21.2,0.7,COL.brown)
+     .r(9,17.3,21,20.6,COL.lbrown).c(19.6,18.2,2.3,COL.lbrown).r(4.5,19.2,10,20.8,COL.lbrown)   // スフィンクスの体と前足
+     .p([[5.8,18.8],[6.8,12.3],[12.2,12.3],[13.2,18.8]], COL.blue)   // ずきん
+     .l(6.3,16.5,7.6,16.5,0.6,COL.yellow).l(6.6,14.5,7.8,14.5,0.6,COL.yellow).l(11.2,14.5,12.4,14.5,0.6,COL.yellow).l(11.4,16.5,12.7,16.5,0.6,COL.yellow)
+     .e(9.5,15.6,2,2.3,COL.tan).c(8.7,15.2,0.4,COL.black).c(10.3,15.2,0.4,COL.black).l(8.9,16.8,10.1,16.8,0.5,COL.brown);
+  }},
+  { name:'タージ・マハル', bw:28, bh:24, draw(P){
+    P.r(1.5,20.4,10,24,COL.green).r(18,20.4,26.5,24,COL.green).r(10.5,20.4,17.5,24,COL.blue).l(14,20.8,14,23.6,1.2,COL.lblue)   // 庭と池
+     .e(4,21.8,0.9,1.6,COL.dkgreen).e(8,21.8,0.9,1.6,COL.dkgreen).e(20,21.8,0.9,1.6,COL.dkgreen).e(24,21.8,0.9,1.6,COL.dkgreen)   // 糸杉
+     .r(1.5,18.2,26.5,20.2,COL.gray);   // 基壇
+    for (const x of [2.5, 23.3]) P.c(x + 1.1, 5.4, 1.3, COL.gray).r(x, 6, x + 2.2, 18.4, COL.gray).r(x + 0.6, 6.6, x + 1.6, 18.4, COL.white).l(x, 10.5, x + 2.2, 10.5, 0.6, COL.gray).l(x, 14.5, x + 2.2, 14.5, 0.6, COL.gray);   // 塔（ミナレット）
+    for (const x of [9.3, 18.7]) P.c(x, 9.6, 1.7, COL.gray).c(x, 9.6, 1.1, COL.white);   // 小さなドーム
+    P.p([[12.8,4.8],[14,3.2],[15.2,4.8]], COL.gray).c(14,7.6,4,COL.gray).r(11,8.4,17,10.8,COL.gray).c(14,7.6,3.3,COL.white).r(11.7,8.8,16.3,10.8,COL.white).l(14,1,14,3.4,0.7,COL.yellow)   // 大ドーム
+     .r(7,10.4,21,18.4,COL.gray).r(7.6,11,20.4,18.4,COL.white)
+     .p([[12,18.4],[12,13.6],[14,11.8],[16,13.6],[16,18.4]], COL.dkgray)   // 中央のアーチ
+     .r(8.8,12.2,10.4,14.4,COL.dkgray).r(8.8,15.4,10.4,17.6,COL.dkgray).r(17.6,12.2,19.2,14.4,COL.dkgray).r(17.6,15.4,19.2,17.6,COL.dkgray);
+  }},
+  { name:'ピサの斜塔', bw:22, bh:28, draw(P){
+    const sx = y => (25.5 - y) / 21 * 4;   // 高さごとの右へのずれ（右に傾ける）
+    P.e(11,26.4,10.6,1.5,COL.green)
+     .r(0.5,21.5,5,25.6,COL.tan).p([[0,21.6],[2.75,19],[5.5,21.6]], COL.dkorange).r(2,23.2,3.4,25.6,COL.dkbrown)   // となりの建物
+     .p([[11.2,4.6],[16.8,5],[17.3,1.7],[11.8,1.2]], COL.gray).p([[11.8,4.6],[16.2,4.9],[16.7,2.2],[12.4,1.8]], COL.white).r(13.6,2.6,15,4.4,COL.dkgray)   // 鐘のある最上階
+     .p([[5.2,25.5],[14.8,25.5],[14.8 + sx(4.4),4.9],[5.2 + sx(4.4),4]], COL.gray).p([[5.8,25.5],[14.2,25.5],[14.2 + sx(4.4),5.4],[5.8 + sx(4.4),4.6]], COL.white);
+    for (let i = 1; i <= 6; i++){ const y = 25.5 - i * 3; P.l(5.2 + sx(y), y - 0.2, 14.8 + sx(y), y + 0.2, 0.7, COL.gray);   // 階の区切りと柱のすき間
+      if (i <= 6) for (const dx of [1.2, 3.4, 5.6, 7.8]) P.r(5.2 + sx(y - 1.5) + dx, y - 2.3, 5.2 + sx(y - 1.5) + dx + 0.9, y - 0.8, COL.dkgray); }
+    P.r(9.2,22.8,10.8,25.5,COL.dkbrown);
+  }}
+];
+const ANIMALS2 = [
+  { name:'ゾウ', bw:28, bh:22, draw(P){
+    P.e(15,21,12.5,0.9,COL.green).l(24.6,8.5,26.5,13.5,0.8,COL.dkgray)
+     .r(13.5,14,16.2,20.6,COL.dkgray).r(17.3,14,20,20.6,COL.dkgray)   // 奥の足
+     .e(16.5,10.5,8.8,6.2,COL.gray).r(9.8,14,13.2,20.8,COL.gray).r(20.4,14,23.8,20.8,COL.gray)
+     .r(13,4.6,20.5,9.6,COL.red).l(13,9.6,20.5,9.6,0.9,COL.yellow).l(13,4.6,20.5,4.6,0.9,COL.yellow)   // 背中の布
+     .c(8,8.8,5,COL.gray).l(4.6,10.5,3,15.5,2.4,COL.gray).l(3,15.5,4.8,18.5,2.1,COL.gray)   // 頭と鼻
+     .e(11.6,8.6,3.2,4.4,COL.dkgray).e(11.6,8.6,2.3,3.5,COL.pink)   // 耳
+     .p([[6,12.3],[7.8,12.3],[5.2,15.8]], COL.white).c(6.8,7.8,0.75,COL.black)
+     .r(10,20,10.9,20.8,COL.white).r(11.4,20,12.3,20.8,COL.white).r(20.6,20,21.5,20.8,COL.white).r(22,20,22.9,20.8,COL.white);
+  }},
+  { name:'キリン', bw:20, bh:28, draw(P){
+    P.c(2.8,3.2,2.4,COL.green).c(1.6,5.6,1.6,COL.dkgreen).c(4.6,1.6,1.5,COL.dkgreen)   // 食べている木の葉
+     .e(10,27,8.5,0.9,COL.green)
+     .l(17.2,16,18.4,21,0.7,COL.yellow).c(18.5,21.4,0.8,COL.dkbrown);
+    for (const x of [7.6, 10, 13.6, 15.8]) P.r(x, 18.5, x + 1.5, 26.4, COL.yellow).r(x, 26, x + 1.5, 27.2, COL.dkbrown);
+    P.e(12.2,17,5.6,3.6,COL.yellow).p([[7.6,16.5],[12.2,15],[9,4.4],[6.2,5.4]], COL.yellow).l(12,15,8.9,4.6,0.8,COL.brown)   // 胴・首・たてがみ
+     .l(6.6,2.8,6.6,1.2,0.7,COL.brown).c(6.6,1,0.6,COL.brown).l(8.2,2.8,8.4,1.2,0.7,COL.brown).c(8.4,1,0.6,COL.brown)   // つの
+     .p([[8.6,3.4],[10.6,2.4],[9.6,4.4]], COL.yellow).e(6.6,4.2,2.6,1.9,COL.yellow).e(4.4,4.9,1.6,1.2,COL.tan).c(6.2,3.7,0.45,COL.black).c(3.7,4.7,0.3,COL.dkbrown);
+    for (const [x, y, r] of [[8,7,0.8],[9.3,9.5,0.9],[8.4,12,0.8],[10.2,12.6,0.9],[9.6,15,0.9],[12.6,16,1],[15.2,16.6,1],[10.4,18,0.9],[13.6,18.8,0.9],[16.2,18.8,0.7],[8.3,21,0.6],[14.3,22,0.6]]) P.c(x, y, r, COL.brown);
+  }},
+  { name:'トラ', bw:28, bh:20, draw(P){
+    P.e(15,19.2,12.5,0.8,COL.green)
+     .l(23.5,9,26.4,6.2,1.4,COL.orange).l(26.4,6.2,26.8,3,1.4,COL.orange).c(26.8,2.6,0.9,COL.black).l(24.5,7.3,25.6,8.4,0.6,COL.black).l(25.8,5,27.4,5,0.6,COL.black)   // しっぽ
+     .r(12.2,12.5,14.3,18.5,COL.dkorange).r(21.8,12.5,23.9,18.5,COL.dkorange)   // 奥の足
+     .e(15.5,10.5,8.6,4.4,COL.orange).e(15,13.3,6.4,1.5,COL.white).r(9,12.5,11.4,19,COL.orange).r(19,12.5,21.4,19,COL.orange)
+     .l(11.3,6.8,11.8,10.4,0.8,COL.black).l(13.7,6.3,14.1,10.2,0.8,COL.black).l(16.1,6.2,16.4,10.2,0.8,COL.black).l(18.5,6.5,18.7,10.4,0.8,COL.black).l(20.9,7.3,21,10.6,0.8,COL.black)   // しま
+     .l(9,15.5,11.4,15.5,0.6,COL.black).l(19,15.5,21.4,15.5,0.6,COL.black)
+     .c(3.9,4.4,1.5,COL.orange).c(9.1,4.4,1.5,COL.orange).c(3.9,4.5,0.7,COL.pink).c(9.1,4.5,0.7,COL.pink)
+     .c(6.5,8,4.4,COL.orange).e(6.5,10.2,2.7,1.9,COL.white)
+     .l(6.5,3.8,6.5,5.6,0.7,COL.black).l(4.9,4.4,5.3,5.8,0.6,COL.black).l(8.1,4.4,7.7,5.8,0.6,COL.black).l(2.6,8.5,3.8,8.5,0.6,COL.black).l(9.2,8.5,10.4,8.5,0.6,COL.black)
+     .c(4.9,7.4,0.8,COL.yellow).c(8.1,7.4,0.8,COL.yellow).c(4.9,7.4,0.4,COL.black).c(8.1,7.4,0.4,COL.black)
+     .p([[5.7,9.2],[7.3,9.2],[6.5,10.2]], COL.pink).l(6.5,10.2,6.5,11.2,0.5,COL.black);
+  }},
+  { name:'フラミンゴ', bw:20, bh:28, draw(P){
+    P.e(10,25.9,9.9,2.1,COL.lblue).l(3.5,26.5,7.5,26.5,0.6,COL.blue).l(13,25.5,17,25.5,0.6,COL.blue)   // 水
+     .l(16.5,26,16.5,18.5,0.8,COL.green).l(18.5,26,18.5,20.5,0.8,COL.green).e(16.5,17.5,0.8,1.7,COL.brown).e(18.5,19.5,0.7,1.5,COL.brown)   // ガマの穂
+     .l(10.5,15,10.5,25.5,0.9,COL.salmon).l(12.5,15,13.6,19,0.9,COL.salmon).l(13.6,19,10.8,20.5,0.9,COL.salmon).l(8.8,25.5,11,25.5,0.8,COL.salmon)   // あし
+     .p([[14.5,9.2],[19,12.2],[14.5,14.6]], COL.pink).e(10.8,12,5.7,4.2,COL.pink).e(12,12.4,3.7,2.5,COL.salmon)   // 体と羽
+     .l(7.6,10.5,5.6,8,2.3,COL.pink).l(5.6,8,6,5.2,2.3,COL.pink).l(6,5.2,8,3.4,2.3,COL.pink)   // S字の首
+     .c(7.8,2.6,2,COL.pink).p([[6.4,1.6],[4.2,2.4],[4.6,3.8],[6.6,3.6]], COL.tan).p([[4.4,2.3],[2.8,3.6],[3.8,5.2],[4.9,3.7]], COL.black).c(7.9,2.3,0.4,COL.black);
+  }},
+  { name:'クジャク', bw:28, bh:26, draw(P){
+    P.c(14,15.5,13,COL.dkgreen).c(14,15.5,11.8,COL.green);
+    for (let a = 190; a <= 350; a += 20){ const t = a * Math.PI / 180; P.l(14, 15.5, 14 + 11.5 * Math.cos(t), 15.5 + 11.5 * Math.sin(t), 0.6, COL.dkgreen); }   // 羽の筋
+    for (let a = 200; a <= 340; a += 20){ const t = a * Math.PI / 180, x = 14 + 9.3 * Math.cos(t), y = 15.5 + 9.3 * Math.sin(t); P.c(x, y, 1.6, COL.yellow).c(x, y, 1, COL.blue); }   // 目玉もよう
+    for (let a = 210; a <= 330; a += 30){ const t = a * Math.PI / 180, x = 14 + 5.4 * Math.cos(t), y = 15.5 + 5.4 * Math.sin(t); P.c(x, y, 1.3, COL.yellow).c(x, y, 0.75, COL.blue); }
+    P.r(0,18,28,26,0)   // 扇の下半分を消す
+     .e(14,24.6,7.5,1,COL.brown).l(13,21,13,24.4,0.8,COL.orange).l(15,21,15,24.4,0.8,COL.orange)
+     .e(14,17.6,2.8,4.4,COL.blue).e(14,18.6,1.6,2.8,COL.navy).l(14,14.5,14,10.5,2,COL.blue).c(14,9.6,1.7,COL.blue)   // 体・首・頭
+     .l(14,8,14,6.3,0.5,COL.navy).l(14,8,12.6,6.6,0.5,COL.navy).l(14,8,15.4,6.6,0.5,COL.navy).c(14,6,0.55,COL.blue).c(12.4,6.4,0.55,COL.blue).c(15.6,6.4,0.55,COL.blue)   // かんむり羽
+     .c(13.3,9.4,0.5,COL.white).c(14.7,9.4,0.5,COL.white).p([[13.3,10.4],[14.7,10.4],[14,11.6]], COL.orange);
+  }},
+  { name:'フクロウ', bw:22, bh:26, draw(P){
+    P.r(0.5,22.8,21.5,24.6,COL.dkbrown).e(19.3,21.8,1.9,1,COL.green).e(2.6,21.8,1.7,0.9,COL.green)   // 枝と葉
+     .p([[4.2,8.5],[4.8,2.8],[8.8,6]], COL.brown).p([[17.8,8.5],[17.2,2.8],[13.2,6]], COL.brown)   // 耳の羽
+     .e(11,14,7.6,9,COL.brown).e(11,16.8,5,6,COL.tan)
+     .e(4.2,15,1.9,5.6,COL.dkbrown).e(17.8,15,1.9,5.6,COL.dkbrown);   // つばさ
+    for (const [x, y] of [[9,15.5],[11,15.5],[13,15.5],[10,17.5],[12,17.5],[9,19.5],[11,19.5],[13,19.5]]) P.l(x - 0.7, y, x + 0.7, y, 0.7, COL.brown);   // おなかのもよう
+    for (const x of [7.7, 14.3]) P.c(x, 9.6, 3.3, COL.white).c(x, 9.6, 2.2, COL.yellow).c(x, 9.6, 1.15, COL.black);
+    P.p([[10,11.4],[12,11.4],[11,13.6]], COL.orange).c(8.4,22.6,1.1,COL.orange).c(13.6,22.6,1.1,COL.orange);
+  }}
+];
+const SPACE = [
+  { name:'土星', bw:28, bh:22, draw(P){
+    const rot = -0.3, ring = (ro, ri, a0, a1) => { const pts = [], f = (rr, a) => { const x = rr * Math.cos(a), y = rr * 0.3 * Math.sin(a); return [14 + x * Math.cos(rot) - y * Math.sin(rot), 11 + x * Math.sin(rot) + y * Math.cos(rot)]; };
+      for (let i = 0; i <= 24; i++) pts.push(f(ro, a0 + (a1 - a0) * i / 24)); for (let i = 24; i >= 0; i--) pts.push(f(ri, a0 + (a1 - a0) * i / 24)); return pts; };
+    P.c(3.5,3.5,0.9,COL.yellow).c(24.5,19,0.9,COL.yellow).c(6,19.5,0.7,COL.yellow).c(24,3,1.7,COL.lblue)   // 星と小さな月
+     .p(ring(13.5, 11.6, Math.PI, 2 * Math.PI), COL.lbrown).p(ring(11.6, 9.4, Math.PI, 2 * Math.PI), COL.tan)   // 輪の奥側
+     .c(14,11,6.6,COL.yellow).e(14,7.4,5.4,0.8,COL.orange).e(14,9.7,6.3,0.9,COL.orange).e(14,13.2,6.1,0.9,COL.dkorange).e(14,15.4,4.8,0.7,COL.orange)   // 本体としま
+     .p(ring(13.5, 11.6, 0, Math.PI), COL.lbrown).p(ring(11.6, 9.4, 0, Math.PI), COL.tan);   // 輪の手前側
+  }},
+  { name:'地球', bw:24, bh:24, draw(P){
+    P.c(21.3,3,2,COL.gray).c(20.8,2.6,0.6,COL.dkgray).c(22,3.8,0.5,COL.dkgray)   // 月
+     .c(12,12.2,11,COL.navy).c(11.4,11.6,10.3,COL.blue)
+     .p([[9.5,5],[14,4.4],[16.6,7],[15.6,10],[17,12.6],[15,17],[12.6,19.4],[11,16],[11.6,13],[8.6,11.6],[7.4,8.4]], COL.green)   // 大陸
+     .p([[2.6,9],[5.4,8.4],[6,12],[4.6,15.6],[2.8,13]], COL.green).p([[18.8,8.6],[20.6,10],[20.4,13],[18.8,11.6]], COL.green)
+     .c(13.2,9,1.4,COL.dkgreen).c(13.6,15,1.3,COL.dkgreen).e(11.6,7,1.7,0.9,COL.tan)
+     .e(11.6,2.6,3.6,0.9,COL.white).e(11.6,21,3.4,0.9,COL.white).e(6.6,6,2.3,0.8,COL.white).e(17,16,2.4,0.8,COL.white).e(6.5,17.5,2,0.7,COL.white);   // 氷と雲
+  }},
+  { name:'宇宙飛行士', bw:22, bh:26, draw(P){
+    P.c(2.6,4,0.9,COL.yellow).c(19.6,20.5,0.9,COL.yellow).c(18.6,2.4,0.8,COL.yellow)
+     .r(4.6,9.5,17.4,18,COL.dkgray)   // 背中の装置
+     .l(6.5,12.6,3.2,16.2,2.8,COL.gray).l(6.5,12.6,3.2,16.2,1.6,COL.white).c(2.8,16.8,1.4,COL.dkgray)
+     .l(15.5,12.6,19,8.8,2.8,COL.gray).l(15.5,12.6,19,8.8,1.6,COL.white).c(19.4,8.2,1.4,COL.dkgray)   // ふっている手
+     .r(6.9,18,10.7,24,COL.gray).r(7.5,18,10.1,23.5,COL.white).r(11.3,18,15.1,24,COL.gray).r(11.9,18,14.5,23.5,COL.white)
+     .r(7.5,20.6,10.1,21.5,COL.red).r(11.9,20.6,14.5,21.5,COL.red).r(6.3,23.3,10.9,25.3,COL.dkgray).r(11.1,23.3,15.7,25.3,COL.dkgray)
+     .r(6.2,10.8,15.8,19.4,COL.gray).r(6.8,11.4,15.2,18.8,COL.white).r(8.8,13.4,13.2,16.2,COL.lblue).r(9.4,14.2,10.6,15.4,COL.red).r(11.4,14.2,12.6,15.4,COL.yellow)
+     .c(11,6.4,5.7,COL.gray).c(11,6.4,5,COL.white).e(11,6.8,3.7,3,COL.navy).e(9.6,5.7,1.3,0.8,COL.lblue);   // ヘルメット
+  }}
+];
+// 6周目（80マス）から出す名画風5枚。少ししか使わない色を増やさない（大きな盤面でまだらが散ると解ける並びが作れなくなる）
+const PAINTINGS6 = [
+  { name:'笛を吹く少年風', bw:18, bh:26, draw(P){
+    P.r(0,0,18,26,COL.gray)
+     .p([[5.8,14],[9.2,14],[8.7,22.5],[5.4,22.5]], COL.red).p([[8.8,14],[12.4,14],[13.6,22.5],[10.3,22.5]], COL.red)   // 赤いズボン
+     .l(6.1,14.5,5.8,22,0.6,COL.black).l(12.1,14.5,13.2,22,0.6,COL.black)
+     .r(5.2,22,8.9,23.7,COL.white).r(10.1,22,13.8,23.7,COL.white).r(4.4,23.5,8.9,24.8,COL.black).r(10.1,23.5,14.6,24.8,COL.black)   // 白いゲートルと靴
+     .p([[5.6,7.6],[12.4,7.6],[12.9,14.6],[5.4,14.6]], COL.black)   // 黒い上着
+     .l(6,8.6,7.2,11.6,1.9,COL.black).l(7.2,11.6,10.8,7.4,1.7,COL.black).l(12.2,8.6,14.6,10.6,1.9,COL.black).l(14.6,10.6,13.2,7.8,1.7,COL.black)   // 腕
+     .l(6.2,8,12.2,14,0.9,COL.white).e(11.8,13.6,1.5,1.2,COL.yellow)   // 白いたすきと笛のケース
+     .c(9,9.6,0.45,COL.yellow).c(9,11.3,0.45,COL.yellow)
+     .e(9,5,2.2,2.5,COL.tan).r(6.8,2.5,11.3,3.5,COL.black).p([[6.9,2.6],[11.2,2.6],[11.8,1.2],[7.4,0.8]], COL.red).l(6.8,2.8,11.3,2.8,0.5,COL.yellow)   // 顔と帽子
+     .c(8.2,5,0.35,COL.black).c(9.8,5,0.35,COL.black)
+     .l(9.4,6.5,15.4,7.9,0.7,COL.black).c(11,7,0.75,COL.tan).c(13.2,7.5,0.75,COL.tan);   // 笛と手
+  }},
+  { name:'風神雷神図風', noiseMul:0.5, bw:30, bh:20, draw(P){
+    const GOLD = '#e0b030';
+    P.r(0,0,30,20,GOLD)
+     .c(22,16.5,3,COL.dkgray).c(25.2,15.4,2.6,COL.dkgray).c(19.4,17.4,2.3,COL.dkgray).c(27.6,17.6,2.2,COL.dkgray).r(18,17.5,29,20,COL.dkgray)   // 右の雲
+     .c(7,16,3,COL.dkgray).c(4,14.6,2.4,COL.dkgray).c(10.2,17.4,2.3,COL.dkgray).c(2,17.4,2,COL.dkgray).r(1,17.5,12,20,COL.dkgray)   // 左の雲
+     // 風神（右・緑）: 頭の上に白い風袋
+     .e(22.8,5.4,5.6,4.4,COL.white).e(22.8,6.6,4.4,4,GOLD)
+     .l(20.8,8.8,18.2,6,1.4,COL.green).l(24.8,8.8,27.6,6,1.4,COL.green)
+     .l(21.8,13,20,16,1.5,COL.green).l(23.8,13,26.4,15.2,1.5,COL.green)
+     .e(22.8,10.6,2.9,3.2,COL.green).p([[20.4,11.6],[25.2,11.6],[24.6,14.2],[21,14.2]], COL.red)
+     .c(22.4,6.2,2.2,COL.green).c(22.4,4.5,1.3,COL.dkgray).c(21.6,6.1,0.45,COL.white).c(23.2,6.1,0.45,COL.white).l(21.6,7.5,23.2,7.5,0.6,COL.red)
+     // 雷神（左・白）: まわりに太鼓の輪
+     .l(6.2,8.8,3.8,6,1.4,COL.white).l(10.2,9,12.6,11.6,1.4,COL.white)
+     .l(7,13,5,16,1.5,COL.white).l(9,13,11.6,15.4,1.5,COL.white)
+     .e(8,10.6,2.9,3.2,COL.white).p([[5.6,11.6],[10.4,11.6],[9.8,14.2],[6.2,14.2]], COL.blue)
+     .c(8.6,6.2,2.2,COL.white).c(8.6,4.5,1.3,COL.dkgray).c(7.8,6.1,0.45,COL.dkgray).c(9.4,6.1,0.45,COL.dkgray).l(7.8,7.5,9.4,7.5,0.6,COL.red);
+    for (let a = 170; a <= 380; a += 30){ const t = a * Math.PI / 180; P.c(8.3 + 6.2 * Math.cos(t), 7.6 + 5.6 * Math.sin(t), 1.05, COL.dkgray); }   // 太鼓
+  }},
+  { name:'写楽の大首絵風', bw:20, bh:26, draw(P){
+    P.r(0,0,20,26,COL.dkgray)
+     .p([[0,26],[0,17],[5,13.5],[15,13.5],[20,17],[20,26]], COL.brown)   // 着物
+     .l(2.5,16.5,1.5,26,0.9,COL.dkbrown).l(17.5,16.5,18.5,26,0.9,COL.dkbrown).l(10,19,10,26,0.9,COL.dkbrown)
+     .p([[6.4,13],[13.6,13],[10,20]], COL.red).p([[7.8,13],[12.2,13],[10,17.4]], COL.white)   // えり
+     .e(10,8.6,4.7,5.7,COL.white)   // 顔
+     .e(10,3.6,4.4,2.4,COL.black).e(5.2,7,1.3,2.8,COL.black).e(14.8,7,1.3,2.8,COL.black).c(10,1.5,1.4,COL.black)   // まげ
+     .l(6.7,6.3,9,7.2,0.7,COL.black).l(13.3,6.3,11,7.2,0.7,COL.black)   // つり上がった眉
+     .l(6.9,8.3,9,8.6,0.7,COL.black).l(13.1,8.3,11,8.6,0.7,COL.black).l(7,9.2,8.8,9.4,0.5,COL.red).l(13,9.2,11.2,9.4,0.5,COL.red)   // 目とくま取り
+     .l(10.4,8.8,10.8,10.6,0.5,COL.black).l(10.8,10.6,9.8,10.9,0.5,COL.black)   // かぎ鼻
+     .l(8.4,12.4,10,11.8,0.7,COL.black).l(10,11.8,11.6,12.4,0.7,COL.black);   // への字の口
+    for (const [cx, cy, s] of [[5.2, 20.6, 1], [14.8, 21.4, -1]]){   // 着物から突き出した両手
+      P.e(cx, cy, 1.7, 1.4, COL.white);
+      for (const [dx, dy] of [[-2.2,-2.4],[-1,-3.2],[0.2,-3.4],[1.4,-3],[2.6,-1.2]]) P.l(cx, cy, cx + s * dx, cy + dy, 0.8, COL.white);
+    }
+  }},
+  { name:'アルルの寝室風', noiseMul:0.25, bw:26, bh:22, draw(P){
+    P.r(0,0,26,22,COL.lblue)
+     .p([[0,22],[0,14.5],[9,11],[26,11.5],[26,22]], COL.lbrown).l(2,22,9.5,11.6,0.6,COL.orange).l(9,22,13,11.6,0.6,COL.orange)   // 床
+     .r(10.5,2.5,14.5,9.5,COL.green).l(12.5,2.5,12.5,9.5,0.6,COL.orange).l(10.5,6.5,14.5,6.5,0.6,COL.orange)   // 窓
+     .r(17.5,1.5,20.5,5,COL.orange).r(18.1,2.1,19.9,4.4,COL.yellow).r(21.5,1.5,24.5,5,COL.orange).r(22.1,2.1,23.9,4.4,COL.green)   // 壁の絵
+     .r(4.8,9.4,9.2,10.6,COL.orange).l(5.5,10.6,5.5,14.2,0.8,COL.orange).l(8.5,10.6,8.5,13.6,0.8,COL.orange).c(6.2,8.5,0.9,COL.orange).r(7.4,7.8,8.4,9.4,COL.orange)   // 机と水差し（白は使わない＝色が増えると輪郭線の色が取れない）
+     .r(17,6,25.4,11.6,COL.yellow).r(17,6,25.4,6.9,COL.orange)   // ベッドの頭板
+     .p([[16.4,10.6],[25.6,10.6],[26,18.5],[14.4,18.5]], COL.red).r(18,8.8,24.4,11,COL.lblue)   // 赤いふとんと枕
+     .r(14,15,26,20.6,COL.yellow).r(14,15,26,15.9,COL.orange).r(14,20.6,15.3,22,COL.orange).r(24.7,20.6,26,22,COL.orange)   // ベッドの足板
+     .r(1.4,10.2,2.6,17,COL.yellow).p([[1.8,15],[6.2,14.4],[6.8,16.4],[2.4,17]], COL.yellow).l(2.6,17,2.6,20.6,0.8,COL.orange).l(6.4,16.4,6.4,19.6,0.8,COL.orange)   // いす
+     .r(14.6,8,15.6,12.4,COL.yellow).r(13,11,15.6,12.4,COL.yellow).l(13.4,12.4,13.4,14.6,0.8,COL.orange);
+  }},
+  { name:'バベルの塔風', noiseMul:0.25, bw:26, bh:24, draw(P){
+    P.r(0,0,26,24,COL.lblue).e(5,4,3.2,1.2,COL.white).e(21,6.5,3,1.1,COL.white).e(13,1.6,3.6,1,COL.white)
+     .r(0,19.5,26,24,COL.green).p([[16,19.5],[26,18],[26,24],[19.5,24]], COL.blue)   // 大地と海
+     .p([[2.5,22],[23.5,22],[22,17.6],[4,17.6]], COL.tan).p([[4.5,17.6],[21.5,17.6],[20.2,13.8],[5.8,13.8]], COL.tan)
+     .p([[6.3,13.8],[19.7,13.8],[18.5,10.3],[7.5,10.3]], COL.tan).p([[8,10.3],[18,10.3],[17,7],[9,7]], COL.tan)
+     .p([[9.5,7],[16.5,7],[15.8,4.2],[10.4,4.2]], COL.dkorange).p([[10.6,4.3],[11.8,2.6],[13,3.5],[14.4,2.3],[15.6,4.3]], COL.dkorange)   // 造りかけの上の階（れんが色）
+     .p([[16.4,22],[23.5,22],[22,17.6],[21.5,17.6],[20.2,13.8],[19.7,13.8],[18.5,10.3],[18,10.3],[17,7],[14.6,7]], COL.lbrown);   // 右側のかげ
+    for (const [y, x0, x1] of [[17.6,4,22],[13.8,5.8,20.2],[10.3,7.5,18.5],[7,9,17]]) P.l(x0 - 0.4, y, x1 + 0.4, y, 0.7, COL.dkbrown);   // 階の張り出し
+    for (const [y, x0, x1] of [[19,4.2,22],[15,5.8,20.4],[11.4,7.4,18.8],[8,9,17.2]]) for (let x = x0 + 0.6; x + 1 <= x1; x += 2.1) P.r(x, y, x + 1, y + 1.7, COL.dkbrown);   // アーチ
+  }}
+];
+for (const p of [...PAINTINGS, ...PAINTINGS3, ...PAINTINGS6]) p.paint = true;
+// 何周目から出すか（p.from。指定なしは 名画以外＝1周目、名画＝2周目）
+// 11/11 本人指示「3周目以前の画質が荒くなる絵は4周目以降に」: 48〜56マスだと顔がつぶれる人物の名画7枚と、細かい所がつぶれる自由の女神は4周目（64マス）から
+for (const p of [...LATE3, ...PAINTINGS3]) p.from = 3;
+const FROM4 = new Set(['叫び風', 'モナ・リザ風', '真珠の耳飾りの少女風', '落穂拾い風', '牛乳を注ぐ女風', '接吻風', 'ヴィーナスの誕生風', '自由の女神']);
+for (const p of [...PAINTINGS, ...PAINTINGS3, ...BUILDINGS]) if (FROM4.has(p.name)) p.from = 4;
+for (const p of PAINTINGS6) p.from = 6;
 // まさとパパのイラスト（tools/masato_grid.py で作成。お金チャンネルのアイコンの元）。. は空き
 const MASATO_PAL = { k:'#242424', s:'#f9c39a', o:'#e08452', n:'#34528f', w:'#fbf8f1' };
 const MASATO_GRIDS = {
@@ -1465,32 +1686,31 @@ function applyDetail(g, W, H, d){
   return g;
 }
 // 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
-function buildOrder(filter, withPaintings, late){   // late: 3周目からの絵（LATE3・PAINTINGS3）も入れる
-  const base = [...FOODS, ...FRUITS, ...MEALS, ...VEHICLES, ...WORKCARS, ...VEHICLES2, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS, ...MONEY, ...(late ? LATE3 : [])].filter(filter).map(p => ({ p, n: blockCount(rasterPic(p, 1).g) }));
+const ALL_BASE = [...FOODS, ...FRUITS, ...MEALS, ...VEHICLES, ...WORKCARS, ...VEHICLES2, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS, ...MONEY, ...LATE3, ...BUILDINGS, ...ANIMALS2, ...SPACE];
+const ALL_PAINT = [...PAINTINGS, ...PAINTINGS3, ...PAINTINGS6];
+const BASE_N = new Map(ALL_BASE.map(p => [p, blockCount(rasterPic(p, 1).g)]));   // 基準サイズでのブロック数
+// 2周目以降: 単純すぎる絵（基準200ブロック未満）と色数が少ない絵（エアコン・セラミックファンヒーター・れいぞうこ）は出さず、名画は2倍になったここから出す
+// ※色数の少ない絵は名前で固定（10/27まで「追加色込み5以下」を計算していたが、陰影の色の作り方を変えると2周目の並びが変わってしまうため）
+const FEW_COLORS = new Set(['エアコン', 'セラミックファンヒーター', 'れいぞうこ']);
+const CYC2_FILTER = p => BASE_N.get(p) >= 200 && !FEW_COLORS.has(p.name);
+function buildOrder(lap){   // lap: 何周目か（1〜）。その周までに出はじめる絵（p.from）だけを並べる。1周目は名画なし
+  const base = ALL_BASE.filter(p => (p.from || 1) <= lap && (lap === 1 || CYC2_FILTER(p))).map(p => ({ p, n: BASE_N.get(p) }));
   base.sort((a, b) => a.n - b.n);
-  const paints = withPaintings ? PAINTINGS.concat(late ? PAINTINGS3 : []) : [];
+  const paints = lap >= 2 ? ALL_PAINT.filter(p => (p.from || 2) <= lap) : [];
   const total = base.length + paints.length, first = Math.min(10, total), last = total;
   const at = new Set(paints.map((p, i) => first + Math.round(i * (last - first) / Math.max(1, paints.length - 1))));
   const out = []; let pi = 0, bi = 0;
   for (let lv = 1; lv <= total; lv++) out.push((at.has(lv) && pi < paints.length) ? paints[pi++] : (bi < base.length ? base[bi++].p : paints[pi++]));
   return out;
 }
-// 1周目: 名画以外の全部（名画は小さいとそう見えないので1周目には出さない）
-const CYCLE1 = buildOrder(() => true, false);
-// 2周目以降: 単純すぎる絵（基準200ブロック未満）と色数が少ない絵（エアコン・セラミックファンヒーター・れいぞうこ）は出さず、名画は2倍になったここから出す
-// ※色数の少ない絵は名前で固定（10/27まで「追加色込み5以下」を計算していたが、陰影の色の作り方を変えると2周目の並びが変わってしまうため）
-const FEW_COLORS = new Set(['エアコン', 'セラミックファンヒーター', 'れいぞうこ']);
-const CYC2_FILTER = p => blockCount(rasterPic(p, 1).g) >= 200 && !FEW_COLORS.has(p.name);
-const CYCLE2 = buildOrder(CYC2_FILTER, true);
-// 3周目以降: 2周目の顔ぶれ＋大きな盤面で映える絵（大阪城・金閣寺・恐竜2・クジラ・名画風4。11/9 本人依頼）
-const CYCLE3 = buildOrder(CYC2_FILTER, true, true);
-const cycOrder = cyc => cyc === 0 ? CYCLE1 : cyc === 1 ? CYCLE2 : CYCLE3;
-const PICS = CYCLE1;
+// 周ごとの並び（7周ぶん。8周目以降は7周目と同じ）: 1周目＝名画以外 / 2周目＝名画が入る / 3周目＝大阪城・恐竜など＋夜のカフェテラス風 / 4〜5周目＝人物の名画・自由の女神 / 6周目〜＝名画風5枚（笛を吹く少年風など）
+const ORDERS = [1, 2, 3, 4, 5, 6, 7].map(buildOrder);
+const cycOrder = cyc => ORDERS[Math.min(cyc, ORDERS.length - 1)];
+const CYCLE1 = ORDERS[0];
 let PIC_OVERRIDE = null;   // 動作確認用（?pic=名前）
 function levelPos(lv){ // レベル → 周・周内の位置・その周の並び
-  if (lv <= CYCLE1.length) return { cyc: 0, idx: lv - 1, order: CYCLE1 };
-  const r = lv - CYCLE1.length - 1; if (r < CYCLE2.length) return { cyc: 1, idx: r, order: CYCLE2 };
-  const r3 = r - CYCLE2.length; return { cyc: 2 + Math.floor(r3 / CYCLE3.length), idx: r3 % CYCLE3.length, order: CYCLE3 };
+  let r = lv - 1, c = 0; while (c < ORDERS.length - 1 && r >= ORDERS[c].length){ r -= ORDERS[c].length; c++; }
+  const order = ORDERS[c]; return { cyc: c + Math.floor(r / order.length), idx: r % order.length, order };
 }
 const limitCache = new Map();
 function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名画以外はこれより少なくする）。周内に無ければ次の周の最初の名画
@@ -1511,7 +1731,7 @@ const baseMult = cyc => cyc === 0 ? 1 : 2 * maxDim(cyc) / 48;
 const isMasatoLv = lv => lv % MASATO_EVERY === 0;
 const seqLv = lv => lv - Math.floor(lv / MASATO_EVERY);   // まさとパパの面自体は直前の面と同じ周・大きさ
 // まったく同じ条件（絵の並び・大きさの上限・複雑さ）のくり返しが始まる面＝上限が頭打ちになる周（今は7周目）の次の周の最初の面。絵や CYC_DIM を変えると自動で変わる（11/2 本人依頼でタイトル画面に表示）
-const LOOP_LV = (() => { const s = CYCLE1.length + CYCLE2.length + (CYC_DIM.length - 2) * CYCLE3.length + 1; let lv = s; while (seqLv(lv) < s || isMasatoLv(lv)) lv++; return lv; })();
+const LOOP_LV = (() => { let s = 1; for (let c = 0; c < Math.max(CYC_DIM.length, ORDERS.length); c++) s += cycOrder(c).length; let lv = s; while (seqLv(lv) < s || isMasatoLv(lv)) lv++; return lv; })();
 function levelSpec(lv0){
   const lv = seqLv(lv0);
   const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
@@ -2079,7 +2299,7 @@ fit();
 // ?lv=3 で指定レベルから、?auto=1 で自動プレイ（動作確認用）
 const Q = new URLSearchParams(location.search);
 if (Q.get('best')) bestLv = parseInt(Q.get('best'), 10) || 1;   // 動作確認用: 到達レベルを仮に設定
-if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...FOODS, ...FRUITS, ...MEALS, ...VEHICLES, ...WORKCARS, ...VEHICLES2, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS, ...MONEY, ...PAINTINGS, ...LATE3, ...PAINTINGS3, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
+if (Q.get('pic')){ const nm = Q.get('pic'); PIC_OVERRIDE = [...ALL_BASE, ...ALL_PAINT, MASATO].find(p => p.name === nm) || null; }   // 動作確認用: 絵を名前で指定
 // 動作確認用: ?sim=17 で、その面の並び10通りについて各シミュレーション（C=慎重 A=せっかち I=少しずつ、小文字=ランダム混じり）の合否を title に出す
 if (Q.get('sim')){ const lv = parseInt(Q.get('sim'), 10) || 1; const spec = levelSpec(lv); const R = mulberry32(5); let k = spec.k, ras = rasterPic(spec.food, k);
   const { W, H, g } = ras; applyDetail(g, W, H, spec.detail); spec.chunk = Math.max(spec.chunk, blockCount(g) / (spec.potMax || 36)); const out = [];
