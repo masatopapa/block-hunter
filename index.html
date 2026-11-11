@@ -2095,12 +2095,13 @@ function pop(){ if (now - lastPop < 0.07) return; lastPop = now; tone(520 + rnd(
 function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
 // ネコがブロックを運んで穴に入るときの短い「ニャー」（11/11）。続けて入るときは間引く。音程は1匹ずつ少し変える
 let lastNya = -1;
-function nya(){ if (muted || Math.abs(now - lastNya) < 0.13) return; lastNya = now; const a = ac(); if (!a) return;
-  const t = a.currentTime, o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), p = 0.9 + Math.random() * 0.35;
-  o.type = 'sawtooth'; o.frequency.setValueAtTime(620 * p, t); o.frequency.linearRampToValueAtTime(980 * p, t + 0.05); o.frequency.exponentialRampToValueAtTime(640 * p, t + 0.19);
-  f.type = 'bandpass'; f.Q.value = 4; f.frequency.setValueAtTime(1300, t); f.frequency.linearRampToValueAtTime(2600, t + 0.07); f.frequency.linearRampToValueAtTime(1500, t + 0.19);
-  g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
-  o.connect(f).connect(g).connect(a.destination); o.start(t); o.stop(t + 0.21); }
+function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return;
+  const t = a.currentTime, o = a.createOscillator(), o2 = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), g2 = a.createGain(), p = 0.92 + Math.random() * 0.3, D = 0.38;
+  for (const [os, m] of [[o, 1], [o2, 2]]){ os.frequency.setValueAtTime(900 * p * m, t); os.frequency.linearRampToValueAtTime(1500 * p * m, t + 0.09); os.frequency.linearRampToValueAtTime(1380 * p * m, t + 0.2); os.frequency.exponentialRampToValueAtTime(880 * p * m, t + D); }
+  o.type = 'sawtooth'; o2.type = 'sine'; g2.gain.value = 0.35;
+  f.type = 'bandpass'; f.Q.value = 2.2; f.frequency.setValueAtTime(1500, t); f.frequency.linearRampToValueAtTime(3400, t + 0.1); f.frequency.linearRampToValueAtTime(2000, t + D);
+  g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(0.17, t + 0.08); g.gain.setValueAtTime(0.17, t + 0.17); g.gain.exponentialRampToValueAtTime(0.001, t + D);
+  o.connect(f); o2.connect(g2).connect(f); f.connect(g).connect(a.destination); o.start(t); o2.start(t); o.stop(t + D + 0.02); o2.stop(t + D + 0.02); }
 function thud(){ tone(140, 0.18, 'sawtooth', 0.12, 80); }
 function buzz(){ tone(220, 0.5, 'sawtooth', 0.12, 110); setTimeout(() => tone(180, 0.6, 'sawtooth', 0.12, 90), 250); }
 function chime(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'sine', 0.14), i * 110)); }
