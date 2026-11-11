@@ -2095,13 +2095,18 @@ function pop(){ if (now - lastPop < 0.07) return; lastPop = now; tone(520 + rnd(
 function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
 // ネコがブロックを運んで穴に入るときの短い「ニャー」（11/11）。続けて入るときは間引く。音程は1匹ずつ少し変える
 let lastNya = -1;
-function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return;
-  const t = a.currentTime, o = a.createOscillator(), o2 = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), g2 = a.createGain(), p = 0.92 + Math.random() * 0.3, D = 0.38;
-  for (const [os, m] of [[o, 1], [o2, 2]]){ os.frequency.setValueAtTime(900 * p * m, t); os.frequency.linearRampToValueAtTime(1500 * p * m, t + 0.09); os.frequency.linearRampToValueAtTime(1380 * p * m, t + 0.2); os.frequency.exponentialRampToValueAtTime(880 * p * m, t + D); }
-  o.type = 'sawtooth'; o2.type = 'sine'; g2.gain.value = 0.35;
-  f.type = 'bandpass'; f.Q.value = 2.2; f.frequency.setValueAtTime(1500, t); f.frequency.linearRampToValueAtTime(3400, t + 0.1); f.frequency.linearRampToValueAtTime(2000, t + D);
-  g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(0.17, t + 0.08); g.gain.setValueAtTime(0.17, t + 0.17); g.gain.exponentialRampToValueAtTime(0.001, t + D);
-  o.connect(f); o2.connect(g2).connect(f); f.connect(g).connect(a.destination); o.start(t); o2.start(t); o.stop(t + D + 0.02); o2.stop(t + D + 0.02); }
+// ニャー: のこぎり波を2つの山（口の開き＝F1、舌の位置＝F2）に通す。こもった「ン」→ F2が高い「ィ」→ F1が上がりF2が下がる「ャー」の順に動かす
+function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return; meow(a, a.currentTime, 0.92 + Math.random() * 0.3, {}); }
+function meow(a, t, p, P){
+  const n = P.n == null ? 0.06 : P.n, D = n + (P.len || 0.36), k = P.pitch || 1, cl = P.close, tA = t + n + 0.13, tE = t + D;
+  const o = a.createOscillator(), b1 = a.createBiquadFilter(), b2 = a.createBiquadFilter(), g2 = a.createGain(), g = a.createGain();
+  const ramp = (prm, pts) => { prm.setValueAtTime(pts[0][1], t); for (const [x, v] of pts.slice(1)) prm.linearRampToValueAtTime(v, x); };
+  o.type = 'sawtooth'; ramp(o.frequency, [[t, 880 * p * k], [t + n, 980 * p * k], [tA, 1500 * p * k], [t + D * 0.6, 1380 * p * k], [tE, (cl ? 760 : 900) * p * k]]);
+  b1.type = 'bandpass'; b1.Q.value = 2.5; ramp(b1.frequency, [[t, 500], [t + n, 500], [t + n + 0.04, 650], [tA, 1350], [t + D * 0.6, 1300], [tE, cl ? 550 : 1000]]);
+  b2.type = 'bandpass'; b2.Q.value = 4; ramp(b2.frequency, [[t, 2400], [t + n, 3300], [t + n + 0.05, 3300], [tA + 0.02, 2000], [t + D * 0.6, 1900], [tE, cl ? 1100 : 1700]]);
+  ramp(g2.gain, [[t, 0.02], [t + n, 0.05], [t + n + 0.025, 1.3], [tA, 0.7], [tE, cl ? 0.2 : 0.5]]);
+  ramp(g.gain, [[t, 0.0001], [t + 0.02, n ? 0.09 : 0.0001], [t + n, n ? 0.09 : 0.0001], [t + n + 0.05, 0.3], [t + D * 0.6, 0.3], [tE, 0.0001]]);
+  o.connect(b1).connect(g); o.connect(b2).connect(g2).connect(g); g.connect(a.destination); o.start(t); o.stop(tE + 0.02); }
 function thud(){ tone(140, 0.18, 'sawtooth', 0.12, 80); }
 function buzz(){ tone(220, 0.5, 'sawtooth', 0.12, 110); setTimeout(() => tone(180, 0.6, 'sawtooth', 0.12, 90), 250); }
 function chime(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'sine', 0.14), i * 110)); }
