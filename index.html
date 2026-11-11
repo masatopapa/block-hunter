@@ -2028,7 +2028,7 @@ function updateAnts(dt){
         const rp = returnPath(a.c, a.r); if (rp) a.back = rp;   // 最短の帰り道（取れなければ来た道を戻る）
         a.st = 1; a.t = 0;
       } else { // 穴に帰った
-        G.rip.push({ x: a.x, y: a.y, t: 0, col: a.col }); A.splice(k, 1);
+        G.rip.push({ x: a.x, y: a.y, t: 0, col: a.col }); A.splice(k, 1); nya();
       }
     }
   }
@@ -2093,6 +2093,14 @@ function ac(){ if (!AC){ try { AC = new (window.AudioContext || window.webkitAud
 function tone(f, dur, type, vol, slide){ if (muted) return; const a = ac(); if (!a) return; const o = a.createOscillator(), g = a.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, a.currentTime); if (slide) o.frequency.exponentialRampToValueAtTime(slide, a.currentTime + dur); g.gain.setValueAtTime(vol || 0.15, a.currentTime); g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + dur); }
 function pop(){ if (now - lastPop < 0.07) return; lastPop = now; tone(520 + rnd() * 300, 0.07, 'triangle', 0.08, 200); }
 function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
+// ネコがブロックを運んで穴に入るときの短い「ニャー」（11/11）。続けて入るときは間引く。音程は1匹ずつ少し変える
+let lastNya = -1;
+function nya(){ if (muted || Math.abs(now - lastNya) < 0.13) return; lastNya = now; const a = ac(); if (!a) return;
+  const t = a.currentTime, o = a.createOscillator(), f = a.createBiquadFilter(), g = a.createGain(), p = 0.9 + Math.random() * 0.35;
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(620 * p, t); o.frequency.linearRampToValueAtTime(980 * p, t + 0.05); o.frequency.exponentialRampToValueAtTime(640 * p, t + 0.19);
+  f.type = 'bandpass'; f.Q.value = 4; f.frequency.setValueAtTime(1300, t); f.frequency.linearRampToValueAtTime(2600, t + 0.07); f.frequency.linearRampToValueAtTime(1500, t + 0.19);
+  g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.03); g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  o.connect(f).connect(g).connect(a.destination); o.start(t); o.stop(t + 0.21); }
 function thud(){ tone(140, 0.18, 'sawtooth', 0.12, 80); }
 function buzz(){ tone(220, 0.5, 'sawtooth', 0.12, 110); setTimeout(() => tone(180, 0.6, 'sawtooth', 0.12, 90), 250); }
 function chime(){ [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.35, 'sine', 0.14), i * 110)); }
@@ -2118,32 +2126,52 @@ function drawWood(){
     w.fillStyle = 'rgba(0,0,0,.18)'; w.fillRect(0, 0, LW, 64); }
   ctx.drawImage(wood, 0, 0, LW, LH);
 }
-// アリのスプライト（右向き）。丸い大きな頭・大きな目・ほっぺ・先に玉のついた触角で、かわいらしく
-function antSprite(col, fr){
+// ネコのスプライト（右向き・上から見た姿。11/11 アリから変更）。取りに行く色に合わせる。現実にいない色は三毛猫の茶か黒をその色に置き換える
+// 色から猫の種類を決める（名前の無い中間色にも使える規則）: 無彩色＝白猫・グレー・サバトラ・黒猫／茶〜オレンジ系＝茶トラなど／それ以外＝三毛（暗い色は黒を、明るい色は茶をその色に）
+function catKind(hex){
+  const [r, g, b] = rgbOf(hex), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, sat = mx ? d / mx : 0, lum = lumOf(hex);
+  let hue = 0; if (d){ hue = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hue = (hue * 60 + 360) % 360; }
+  if (sat < 0.22) return { type: lum > 70 && lum < 130 ? 'tabby' : 'solid' };
+  if ((hue >= 17 && hue <= 46) || (hue > 46 && hue <= 56 && sat < 0.45)) return { type: lum >= 90 && lum <= 190 ? 'tabby' : 'solid' };
+  return { type: 'mike', dark: lum < 100 };
+}
+function catSprite(col, fr){
   const key = col + fr; if (sprites.has(key)) return sprites.get(key);
-  const S = 40, c = document.createElement('canvas'); c.width = S * DPR; c.height = S * DPR; const g = c.getContext('2d'); g.scale(DPR, DPR); g.translate(S / 2, S / 2);
-  const body = COL[col] || col, dark = shade(body, 0.45), light = shade(body, 1.35); g.lineCap = 'round'; g.lineJoin = 'round';
-  // 脚（3対・短めで丸く）
-  g.strokeStyle = dark; g.lineWidth = 2; const sh = fr ? 1.8 : -1.8;
-  for (const [x, y] of [[-6, 5.5], [-1.5, 6], [2.5, 5.5]]){ g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + sh * 0.5, y * 0.6, x + sh, y); g.moveTo(x, 0); g.quadraticCurveTo(x - sh * 0.5, -y * 0.6, x - sh, -y); g.stroke(); }
-  // 触角（先に玉）
-  g.lineWidth = 1.5; g.beginPath(); g.moveTo(8, -2.5); g.quadraticCurveTo(10.5, -5, 12.5, -6); g.moveTo(8, 2.5); g.quadraticCurveTo(10.5, 5, 12.5, 6); g.stroke();
-  g.fillStyle = dark; g.beginPath(); g.arc(12.8, -6.3, 1.4, 0, 7); g.arc(12.8, 6.3, 1.4, 0, 7); g.fill();
-  // 体（おしり・むね・頭）
-  g.fillStyle = body; g.strokeStyle = dark; g.lineWidth = 1.4;
-  g.beginPath(); g.ellipse(-8.5, 0, 5.2, 4.3, 0, 0, 7); g.fill(); g.stroke();
-  g.beginPath(); g.arc(-1.5, 0, 3.6, 0, 7); g.fill(); g.stroke();
-  g.beginPath(); g.arc(6, 0, 5.4, 0, 7); g.fill(); g.stroke();
-  // つや
-  g.fillStyle = light; g.globalAlpha = 0.7; g.beginPath(); g.ellipse(-9.5, -1.6, 2.2, 1.1, -0.3, 0, 7); g.fill(); g.beginPath(); g.arc(4.2, -2.6, 1.3, 0, 7); g.fill(); g.globalAlpha = 1;
-  // 目（大きめ・白目＋黒目＋ハイライト）
-  g.fillStyle = '#fff'; g.strokeStyle = dark; g.lineWidth = 0.8;
-  for (const y of [-2.4, 2.4]){ g.beginPath(); g.ellipse(7.6, y, 2.1, 2.4, 0, 0, 7); g.fill(); g.stroke(); }
-  g.fillStyle = '#1e1e1e'; for (const y of [-2.2, 2.2]){ g.beginPath(); g.ellipse(8.3, y, 1.25, 1.5, 0, 0, 7); g.fill(); }
-  g.fillStyle = '#fff'; for (const y of [-2.9, 1.5]){ g.beginPath(); g.arc(8.8, y, 0.55, 0, 7); g.fill(); }
-  // ほっぺ・口
-  g.fillStyle = 'rgba(255,120,150,.55)'; for (const y of [-4.6, 4.6]){ g.beginPath(); g.ellipse(5.2, y, 1.3, 0.9, 0, 0, 7); g.fill(); }
-  g.strokeStyle = dark; g.lineWidth = 0.9; g.beginPath(); g.arc(10.2, 0, 1.1, -1.1, 1.1); g.stroke();
+  const S = 40, c = document.createElement('canvas'); c.width = S * DPR; c.height = S * DPR; const g = c.getContext('2d'); g.scale(DPR, DPR); g.translate(S / 2 + 1.5, S / 2);
+  const tc = COL[col] || col, kd = catKind(tc), mike = kd.type === 'mike', dk = c2 => { const [r, gg, b] = rgbOf(c2).map(v => Math.round(v * 0.68)); return `rgb(${r},${gg},${b})`; };
+  const base = mike ? '#fbf8f1' : tc, line = mike ? '#6b5646' : lumOf(tc) < 60 ? '#5e5e5e' : shade(tc, 0.45), second = mike ? (kd.dark ? '#f58a1f' : '#2a2a2a') : null;
+  g.lineCap = 'round'; g.lineJoin = 'round'; const sh = fr ? 1.7 : -1.7;
+  // しっぽ
+  const tail = () => { g.beginPath(); g.moveTo(-10, 0); g.quadraticCurveTo(-15, sh * 1.6, -18, sh * 2.4); };
+  tail(); g.strokeStyle = line; g.lineWidth = 4.8; g.stroke(); tail(); g.strokeStyle = mike ? tc : base; g.lineWidth = 3.2; g.stroke();
+  if (kd.type === 'tabby'){ g.strokeStyle = dk(tc); g.lineWidth = 1.1; for (const t of [0.45, 0.75]){ const x = -10 - 8 * t, y = sh * 2.4 * t * t + sh * 1.1 * t * (1 - t); g.beginPath(); g.moveTo(x, y - 1.4); g.lineTo(x, y + 1.4); g.stroke(); } }
+  // 足（前後を交互に）
+  g.fillStyle = base; g.strokeStyle = line; g.lineWidth = 1.2;
+  for (const [x, y] of [[3.5 + sh, -5.5], [3.5 - sh, 5.5], [-8 - sh, -5.3], [-8 + sh, 5.3]]){ g.beginPath(); g.ellipse(x, y, 2.4, 1.9, 0, 0, 7); g.fill(); g.stroke(); }
+  // 胴
+  const part = (path, paint) => { g.save(); path(); g.fillStyle = base; g.fill(); g.clip(); paint(); g.restore(); path(); g.strokeStyle = line; g.lineWidth = 1.4; g.stroke(); };
+  const blob = (x, y, rx, ry, c2) => { g.fillStyle = c2; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); };
+  part(() => { g.beginPath(); g.ellipse(-4, 0, 7.6, 5.6, 0, 0, 7); }, () => {
+    if (mike){ blob(-6.5, -1.6, 5.6, 5.2, tc); blob(-0.5, 5, 3.6, 3, second); }
+    if (kd.type === 'tabby'){ g.strokeStyle = dk(tc); g.lineWidth = 1.2; for (const x of [-8.5, -5, -1.5]) for (const s of [-1, 1]){ g.beginPath(); g.moveTo(x, s * 6); g.lineTo(x + 0.6, s * 2.2); g.stroke(); } }
+    g.fillStyle = 'rgba(255,255,255,.28)'; g.beginPath(); g.ellipse(-6, -2.4, 3, 1.3, -0.2, 0, 7); g.fill(); });
+  // 耳（上＝この色、下＝三毛のもう1色）
+  for (const s of [-1, 1]){ const ec = mike ? (s < 0 ? tc : second) : base;
+    g.beginPath(); g.moveTo(2.2, s * 4.2); g.lineTo(4.4, s * 9.6); g.lineTo(8.6, s * 4.6); g.closePath(); g.fillStyle = ec; g.fill(); g.strokeStyle = line; g.lineWidth = 1.3; g.stroke();
+    g.beginPath(); g.moveTo(4, s * 5.4); g.lineTo(4.8, s * 8); g.lineTo(6.8, s * 5.6); g.closePath(); g.fillStyle = '#ffb3c4'; g.fill(); }
+  // 頭
+  part(() => { g.beginPath(); g.arc(6.5, 0, 6, 0, 7); }, () => {
+    if (mike){ blob(5, -4.6, 5.4, 4.4, tc); blob(3.6, 5.6, 3.6, 3, second); }
+    if (kd.type === 'tabby'){ g.strokeStyle = dk(tc); g.lineWidth = 1; for (const y of [-1.8, 0, 1.8]){ g.beginPath(); g.moveTo(1, y); g.lineTo(3.6, y * 0.8); g.stroke(); } } });
+  // 目
+  g.fillStyle = '#fff'; g.strokeStyle = line; g.lineWidth = 0.8;
+  for (const y of [-2.5, 2.5]){ g.beginPath(); g.ellipse(8, y, 2, 2.3, 0, 0, 7); g.fill(); g.stroke(); }
+  g.fillStyle = '#1e1e1e'; for (const y of [-2.3, 2.3]){ g.beginPath(); g.ellipse(8.6, y, 1.2, 1.45, 0, 0, 7); g.fill(); }
+  g.fillStyle = '#fff'; for (const y of [-3, 1.6]){ g.beginPath(); g.arc(9.1, y, 0.5, 0, 7); g.fill(); }
+  // ほっぺ・鼻・ひげ
+  g.fillStyle = 'rgba(255,120,150,.55)'; for (const y of [-4.7, 4.7]){ g.beginPath(); g.ellipse(6.2, y, 1.2, 0.8, 0, 0, 7); g.fill(); }
+  g.fillStyle = '#f0708c'; g.beginPath(); g.moveTo(11, -0.9); g.lineTo(11, 0.9); g.lineTo(12.2, 0); g.closePath(); g.fill();
+  g.strokeStyle = mike || lumOf(tc) > 150 ? '#6b5646' : '#fff'; g.lineWidth = 0.5; for (const s of [-1, 1]){ g.beginPath(); g.moveTo(11, s * 2.2); g.lineTo(13.6, s * 4.6); g.moveTo(10.6, s * 2.8); g.lineTo(12.2, s * 6); g.stroke(); }
   sprites.set(key, c); return c;
 }
 function drawBoard(){
@@ -2192,11 +2220,11 @@ function draw(){
     if (!s){ ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(x - SLOT_W / 2, SLOT_Y + 4, SLOT_W, SLOT_H, 12); ctx.fill(); ctx.fillStyle = '#fff8ea'; rr(x - SLOT_W / 2, SLOT_Y, SLOT_W, SLOT_H - 4, 12); ctx.fill(); }
     else { const c = COL[s.col] || s.col; tile(x, SLOT_Y + SLOT_H / 2 + 4, SLOT_W, SLOT_H - 8, s.col, s.n);
       // 壺のふちから顔をのぞかせるアリ（上向き）
-      ctx.save(); ctx.translate(x, SLOT_Y + 3); ctx.rotate(-Math.PI / 2); ctx.drawImage(antSprite(s.col, 0), -16, -16, 32, 32); ctx.restore(); } }
+      ctx.save(); ctx.translate(x, SLOT_Y + 3); ctx.rotate(-Math.PI / 2); ctx.drawImage(catSprite(s.col, 0), -16, -16, 32, 32); ctx.restore(); } }
   if (G.fast){ const k = Math.min(1, G.fastT * 4); ctx.save(); ctx.globalAlpha = k; ctx.fillStyle = '#ffb43a'; rr(HOLE.x + 50, HOLE.y - 16, 96, 32, 16); ctx.fill(); ctx.fillStyle = '#4a2a08'; ctx.font = '900 18px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('⏩ 倍速', HOLE.x + 98, HOLE.y + 1); ctx.restore(); }
   // アリ
   const fr = Math.floor(G.time * 14) % 2; const AS = Math.max(24, Math.min(40, G.cs * 2.6));   // アリの大きさはマスに合わせる（細かい絵では小さく）
-  for (const a of G.ants){ const sp = antSprite(a.col, (fr + (a.ph > 3 ? 1 : 0)) % 2);
+  for (const a of G.ants){ const sp = catSprite(a.col, (fr + (a.ph > 3 ? 1 : 0)) % 2);
     ctx.save(); ctx.translate(a.x + Math.sin(G.time * 9 + a.ph) * 1.2, a.y); ctx.rotate(a.ang); if (a.st === 1) ctx.rotate(Math.sin(a.t * 60) * 0.25); ctx.drawImage(sp, -AS / 2, -AS / 2, AS, AS);
     if (a.st === 2){ const c = COL[a.col] || a.col; const s = Math.max(6, Math.min(13, G.cs * 0.7)); ctx.fillStyle = shade(c, 0.7); ctx.fillRect(-7 - s / 2, -s / 2 + 1, s + 1, s + 1); ctx.fillStyle = c; ctx.fillRect(-7 - s / 2, -s / 2, s, s); }   // 背中にかついで運ぶ（顔は隠さない）
     ctx.restore(); }
@@ -2238,7 +2266,7 @@ function showTitle(){
   const cps = []; for (let lv = 1; lv <= bestLv; lv += bestLv >= 201 && lv >= 101 ? 20 : 10) cps.push(lv);
   const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
   const loopHtml = bestLv >= LOOP_LV ? `<p class="loop">${LOOP_LV}面以降は繰り返しになります</p>` : '';   // くり返しの面まで来た人にだけ出す
-  showOv(`<div class="ants">🐜🐜🐜</div><h1>ブロックハンター</h1><p class="lead">色ごとのアリを送って、ドット絵の<br>食べ物・乗り物・家電・名画を食べ尽くそう！</p>
+  showOv(`<div class="ants">🐱🐱🐱</div><h1>ブロックハンター</h1><p class="lead">色ごとのネコを送って、ドット絵の<br>食べ物・乗り物・家電・名画を食べ尽くそう！</p>
     <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}${loopHtml}<button class="btn sub" id="bHelp">あそびかた</button>
     <p class="credit">つくった人：<a href="https://mastopapa.com/profile/" target="_blank" rel="noopener">まさとパパ</a></p>`);
   document.getElementById('bCont').onclick = () => startLevel(bestLv, Date.now() & 0xffffff);
@@ -2248,10 +2276,10 @@ function showTitle(){
 function showHelp(back){
   showOv(`<h2>あそびかた</h2><div class="help">
     <b>①</b> 下の5列の、いちばん上の壺をタップすると上の枠に入ります（枠は5つ）。<br>
-    <b>②</b> 壺からアリが出て、絵の<b>外側から届く</b>同じ色のブロックだけを食べて穴に運びます。数字は残りのアリの数。<br>
+    <b>②</b> 壺からネコが出て、絵の<b>外側から届く</b>同じ色のブロックだけを食べて穴に運びます。数字は残りのネコの数。<br>
     <b>③</b> 囲まれているブロックは食べられません。5つの枠が「食べる物がない色」で埋まるとお手上げ。<br>
     <b>④</b> 全部食べたらクリア。レベルが上がるほど絵が大きく、まだらになります。<br>
-    <b>⑤</b> 残りの壺が空いた枠の数以下になると、自動で枠に入ってアリが倍速になります。<br>
+    <b>⑤</b> 残りの壺が空いた枠の数以下になると、自動で枠に入ってネコが倍速になります。<br>
     <b>PC</b>は数字キー <b>1〜5</b> でも左から順に送れます。</div>
     <button class="btn go" id="bBack">もどる</button>`);
   document.getElementById('bBack').onclick = back;
@@ -2265,14 +2293,14 @@ function showClear(){
     ? `<div class="crown">👑</div><h2 class="omedeto big">だいせいこう！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p><span class="gold">✨ ${L.lv}レベル とうたつ ✨</span>${btns}`
     : cele
     ? `<div class="medal">🏆</div><h2 class="omedeto">おめでとう！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>${btns}`
-    : `<div class="ants">🎉🐜🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>${btns}`);
+    : `<div class="ants">🎉🐱🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>${btns}`);
   if (cele50){ card.classList.add('cele', 'cele50'); confetti(260, true); fireworks(8); setTimeout(fanfare50, 400); }
   else if (cele){ card.classList.add('cele'); confetti(); setTimeout(fanfare, 450); }
   document.getElementById('bNext').onclick = () => startLevel(L.lv + 1, Date.now() & 0xffffff);
   document.getElementById('bTitle').onclick = showTitle;
 }
 function showStuck(){
-  showOv(`<div class="ants">😵🐜😵</div><h2>アリが詰まった！</h2><p>5つの枠がぜんぶ「食べる物がない色」になりました。</p><p class="sub">食べる物が外側に見えている色から送ると詰まりにくい。</p>
+  showOv(`<div class="ants">😿🐱😿</div><h2>ネコが詰まった！</h2><p>5つの枠がぜんぶ「食べる物がない色」になりました。</p><p class="sub">食べる物が外側に見えている色から送ると詰まりにくい。</p>
     <button class="btn go" id="bRetry">同じ並びでやり直す</button><button class="btn sub" id="bShuf">ちがう並びでやり直す</button><button class="btn sub" id="bTitle">タイトルへ</button>`);
   document.getElementById('bRetry').onclick = () => startLevel(L.lv, L.seed);
   document.getElementById('bShuf').onclick = () => startLevel(L.lv, Date.now() & 0xffffff);
