@@ -2096,7 +2096,7 @@ function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
 // ネコがブロックを運んで穴に入るときの短い「ニャー」（11/11）。続けて入るときは間引く。音程は1匹ずつ少し変える
 let lastNya = -1;
 // ニャー: のこぎり波を2つの山（口の開き＝F1、舌の位置＝F2）に通す。こもった「ン」→ F2が高い「ィ」→ F1が上がりF2が下がる「ャー」の順に動かす
-function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return; meow(a, a.currentTime, 0.92 + Math.random() * 0.3, {}); }
+function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return; meow(a, a.currentTime, 0.92 + Math.random() * 0.3, { n: 0.11 }); }
 function meow(a, t, p, P){
   const n = P.n == null ? 0.06 : P.n, D = n + (P.len || 0.36), k = P.pitch || 1, cl = P.close, tA = t + n + 0.13, tE = t + D;
   const o = a.createOscillator(), b1 = a.createBiquadFilter(), b2 = a.createBiquadFilter(), g2 = a.createGain(), g = a.createGain();
