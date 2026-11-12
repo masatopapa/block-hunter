@@ -2283,11 +2283,12 @@ function showTitle(){
   const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
   const loopHtml = bestLv >= LOOP_LV ? `<p class="loop">${LOOP_LV}面以降は繰り返しになります</p>` : '';   // くり返しの面まで来た人にだけ出す
   showOv(`<div class="ants">🐱🐱🐱</div><h1>ブロックハンター</h1><p class="lead">色ごとのネコを送って、ドット絵の<br>食べ物・乗り物・家電・名画を食べ尽くそう！</p>
-    <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}${loopHtml}<button class="btn sub" id="bHelp">あそびかた</button>
+    <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}${loopHtml}<button class="btn sub" id="bHelp">あそびかた</button>${inFrame ? '' : '<button class="btn sub" id="bHome">ホーム画面に追加する方法</button>'}
     <p class="credit">つくった人：<a href="https://mastopapa.com/profile/" target="_blank" rel="noopener">まさとパパ</a></p>`);
   document.getElementById('bCont').onclick = () => startLevel(bestLv, Date.now() & 0xffffff);
   card.querySelectorAll('.cp').forEach(b => { b.onclick = () => startLevel(parseInt(b.dataset.lv, 10), Date.now() & 0xffffff); });
   document.getElementById('bHelp').onclick = () => showHelp(showTitle);
+  const bh = document.getElementById('bHome'); if (bh) bh.onclick = () => showHome(showTitle);
 }
 function showHelp(back){
   showOv(`<h2>あそびかた</h2><div class="help">
@@ -2297,6 +2298,21 @@ function showHelp(back){
     <b>④</b> 全部食べたらクリア。レベルが上がるほど絵が大きく、まだらになります。<br>
     <b>⑤</b> 残りの壺が空いた枠の数以下になると、自動で枠に入ってネコが倍速になります。<br>
     <b>PC</b>は数字キー <b>1〜5</b> でも左から順に送れます。</div>
+    <button class="btn go" id="bBack">もどる</button>`);
+  document.getElementById('bBack').onclick = back;
+}
+// スマホのホーム画面に追加する方法（11/12 本人指示）。ほかのページの中に埋め込まれているとき（Artifact版）は追加できないのでボタンを出さない
+const inFrame = (() => { try { return window.top !== window; } catch (e) { return true; } })();
+function showHome(back){
+  showOv(`<h2>ホーム画面に追加</h2><p class="sub">アイコンから、すぐにあそべるようになります。</p>
+    <div class="help"><b>iPhone（Safari）</b><br>
+    <b>①</b> 画面の下の共有ボタン（四角から矢印が上に出ているマーク）をタップ。見当たらないときは「…」の中にあります。<br>
+    <b>②</b>「ホーム画面に追加」をタップ。<br>
+    <b>③</b> 右上の「追加」をタップ。</div>
+    <div class="help"><b>Android（Chrome）</b><br>
+    <b>①</b> 右上の「︙」をタップ。<br>
+    <b>②</b>「ホーム画面に追加」をタップ。<br>
+    <b>③</b>「ショートカットを作成」→「追加」の順にタップ。</div>
     <button class="btn go" id="bBack">もどる</button>`);
   document.getElementById('bBack').onclick = back;
 }
