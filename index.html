@@ -1936,6 +1936,9 @@ const SPD = 215;                 // アリの速さ px/s
 const DISPATCH = 0.16;           // 1匹出すごとの間隔 s（フレームの刻みで切り上がるので、実際は 1/6 秒＝壺1つから毎秒6匹）
 // 500面以降は送り出しを1.2倍（11/9 本人指示）＝毎秒7.2匹。0.16/1.2 だとフレームの刻みで1.25倍か1.11倍になるので、間隔 1/6/1.2 を端数ごと持ち越して数える
 const DISPATCH_UP_LV = 500, DISPATCH_UP = 1.2;
+// 11/12 本人指示: 600面〜毎秒8匹・700面〜9匹・800面〜10匹。歩く速さは550面〜1.2倍・650面〜さらに1.2倍・750面〜さらに1.2倍（計1.728倍）
+const dispatchRate = lv => lv >= 800 ? 10 : lv >= 700 ? 9 : lv >= 600 ? 8 : 6 * DISPATCH_UP;   // 500面以降の、壺1つから毎秒何匹
+const walkMul = lv => Math.pow(1.2, (lv >= 550) + (lv >= 650) + (lv >= 750));
 
 // ---------- ゲーム状態 ----------
 let L = null;                    // 今のレベル（makeLevel の結果）
@@ -2006,7 +2009,7 @@ function dispatch(s, si){
   const cells = []; for (let j = bi; j >= 0; j = s.F.par[j]) cells.push(j); cells.reverse();
   const path = [[colX(si), SLOT_Y + 6]]; for (const j of cells) path.push(idxPx(s.F, j)); path.push(cellPx(bc, br));
   const back = []; for (let j = cells.length - 1; j >= 0; j--) back.push(idxPx(s.F, cells[j])); back.push([HOLE.x + (rnd() - 0.5) * 20, HOLE.y]);
-  const a = { col: s.col, x: path[0][0], y: path[0][1], path, back, i: 1, st: 0, t: 0, ang: -Math.PI / 2, ph: rnd() * 6.28, c: bc, r: br, sp: SPD * (0.9 + rnd() * 0.25) };
+  const a = { col: s.col, x: path[0][0], y: path[0][1], path, back, i: 1, st: 0, t: 0, ang: -Math.PI / 2, ph: rnd() * 6.28, c: bc, r: br, sp: SPD * walkMul(L.lv) * (0.9 + rnd() * 0.25) };
   G.ants.push(a); return true;
 }
 
@@ -2054,7 +2057,7 @@ function update(dt){
   // 枠から送り出す
   G.slots.forEach((s, si) => { if (!s) return; s.arr += dt;
     if (s.n <= 0){ G.slots[si] = null; return; }   // 全員出発したら枠が空く
-    if (now >= s.tNext){ if (dispatch(s, si)) s.tNext = L.lv >= DISPATCH_UP_LV ? Math.max(s.tNext, now - 1 / 60) + 1 / 6 / DISPATCH_UP : now + DISPATCH; else s.tNext = now + 0.22; }
+    if (now >= s.tNext){ if (dispatch(s, si)) s.tNext = L.lv >= DISPATCH_UP_LV ? Math.max(s.tNext, now - 1 / 60) + 1 / dispatchRate(L.lv) : now + DISPATCH; else s.tNext = now + 0.22; }
   });
   updateAnts(dt);
   for (let k = G.parts.length - 1; k >= 0; k--){ const p = G.parts[k]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 500 * dt; if (p.t > 0.4) G.parts.splice(k, 1); }
