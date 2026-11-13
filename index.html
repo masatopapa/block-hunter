@@ -2365,19 +2365,19 @@ function click(){ tone(880, 0.06, 'square', 0.05, 1200); }
 // ネコがブロックを運んで穴に入るときの短い「ニャー」（11/11）。続けて入るときは間引く。音程は1匹ずつ少し変える
 let lastNya = -1;
 // ニャー: のこぎり波を2つの山（口の開き＝F1、舌の位置＝F2）に通す。こもった「ン」→ F2が高い「ィ」→ F1が上がりF2が下がる「ャー」の順に動かす
-const NYA = [{}, { end: 'n' }, { end: 'q' }];   // ニャー・ニャーン・ニャ？ のどれかを鳴らす
-function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return; meow(a, a.currentTime, 0.92 + Math.random() * 0.3, NYA[Math.random() * 3 | 0]); }
-// end: なし＝ニャー（下がって消える）／'n'＝ニャーン（口を閉じた「ン」が残る）／'q'＝ニャ？（短く、語尾が上がる）
+const NYA = [{}, { end: 'n' }, { end: 'q' }, { end: 'q', pitch: 1.15 }, { end: 'o', pitch: 0.85 }];   // ニャー・ニャーン・ニャ？・高めのニャ？・低めのニャオ のどれかを鳴らす（あとの2つは11/14追加）
+function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return; meow(a, a.currentTime, 0.92 + Math.random() * 0.3, NYA[Math.random() * NYA.length | 0]); }
+// end: なし＝ニャー（下がって消える）／'n'＝ニャーン（口を閉じた「ン」が残る）／'q'＝ニャ？（短く、語尾が上がる）／'o'＝ニャオ（最後に口をすぼめた「オ」になる）。pitch は声の高さの倍率
 function meow(a, t, p, P){
-  const e = P.end, q = e === 'q', nn = e === 'n', n = 0.11, V = P.vol || 0.075, len = q ? 0.2 : nn ? 0.3 : 0.36;
+  p *= P.pitch || 1; const e = P.end, q = e === 'q', nn = e === 'n', oo = e === 'o', n = 0.11, V = P.vol || 0.075, len = q ? 0.2 : nn ? 0.3 : oo ? 0.4 : 0.36;
   const t0 = t + n, tA = t0 + (q ? 0.09 : 0.13), tM = t0 + len * 0.6, tE = t0 + len, tZ = tE + (nn ? 0.17 : 0);
   const o = a.createOscillator(), b1 = a.createBiquadFilter(), b2 = a.createBiquadFilter(), g2 = a.createGain(), g = a.createGain();
   const ramp = (prm, pts, m = 1) => { prm.setValueAtTime(pts[0][1] * m, t); for (const [x, v] of pts.slice(1)) prm.linearRampToValueAtTime(v * m, x); };
   o.type = 'sawtooth'; ramp(o.frequency, [[t, 880], [t0, 980], ...(q ? [[tA, 1200], [tM, 1250], [tE, 1900]] : nn ? [[tA, 1500], [tM, 1380], [tE, 1080], [tZ, 900]] : [[tA, 1500], [tM, 1380], [tE, 900]])], p);
-  b1.type = 'bandpass'; b1.Q.value = 2.5; ramp(b1.frequency, [[t, 500], [t0, 500], [t0 + 0.04, 650], [tA, 1350], [tM, 1300], ...(q ? [[tE, 1350]] : nn ? [[tE, 1150], [tE + 0.05, 1000 * p], [tZ, 900 * p]] : [[tE, 1000]])]);
-  b2.type = 'bandpass'; b2.Q.value = 4; ramp(b2.frequency, [[t, 2400], [t0, 3300], [t0 + 0.05, 3300], [tA + 0.02, 2000], [tM, 1900], [tE, q ? 2100 : 1700]]);
-  ramp(g2.gain, [[t, 0.02], [t0, 0.05], [t0 + 0.025, 1.3], [tA, 0.7], ...(q ? [[tE, 0.8]] : nn ? [[tE, 0.5], [tE + 0.05, 0.03], [tZ, 0.02]] : [[tE, 0.5]])]);
-  ramp(g.gain, [[t, 0.0001], [t + 0.02, 0.3], [t0, 0.3], [t0 + 0.05, 1], ...(q ? [[tE - 0.04, 1.1], [tE, 0.0001]] : nn ? [[tM, 1], [tE, 0.65], [tE + 0.05, 0.42], [tZ - 0.07, 0.38], [tZ, 0.0001]] : [[tM, 1], [tE, 0.0001]])], V);
+  b1.type = 'bandpass'; b1.Q.value = 2.5; ramp(b1.frequency, [[t, 500], [t0, 500], [t0 + 0.04, 650], [tA, 1350], [tM, 1300], ...(q ? [[tE, 1350]] : oo ? [[tM + 0.08, 650], [tE, 600]] : nn ? [[tE, 1150], [tE + 0.05, 1000 * p], [tZ, 900 * p]] : [[tE, 1000]])]);
+  b2.type = 'bandpass'; b2.Q.value = 4; ramp(b2.frequency, [[t, 2400], [t0, 3300], [t0 + 0.05, 3300], [tA + 0.02, 2000], [tM, 1900], ...(oo ? [[tM + 0.08, 1000], [tE, 900]] : [[tE, q ? 2100 : 1700]])]);
+  ramp(g2.gain, [[t, 0.02], [t0, 0.05], [t0 + 0.025, 1.3], [tA, 0.7], ...(q ? [[tE, 0.8]] : oo ? [[tE, 0.9]] : nn ? [[tE, 0.5], [tE + 0.05, 0.03], [tZ, 0.02]] : [[tE, 0.5]])]);
+  ramp(g.gain, [[t, 0.0001], [t + 0.02, 0.3], [t0, 0.3], [t0 + 0.05, 1], ...(q ? [[tE - 0.04, 1.1], [tE, 0.0001]] : oo ? [[tM, 1], [tM + 0.08, 0.9], [tE, 0.0001]] : nn ? [[tM, 1], [tE, 0.65], [tE + 0.05, 0.42], [tZ - 0.07, 0.38], [tZ, 0.0001]] : [[tM, 1], [tE, 0.0001]])], V);
   o.connect(b1).connect(g); o.connect(b2).connect(g2).connect(g); g.connect(a.destination); o.start(t); o.stop(tZ + 0.02); }
 function thud(){ tone(140, 0.18, 'sawtooth', 0.12, 80); }
 function buzz(){ tone(220, 0.5, 'sawtooth', 0.12, 110); setTimeout(() => tone(180, 0.6, 'sawtooth', 0.12, 90), 250); }
