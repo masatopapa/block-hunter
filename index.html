@@ -2369,7 +2369,7 @@ const NYA = [{}, { end: 'n' }, { end: 'q' }, { end: 'q', pitch: 1.15 }, { end: '
 function nya(){ if (muted || Math.abs(now - lastNya) < 0.2) return; lastNya = now; const a = ac(); if (!a) return; meow(a, a.currentTime, 0.92 + Math.random() * 0.3, NYA[Math.random() * NYA.length | 0]); }
 // end: なし＝ニャー（下がって消える）／'n'＝ニャーン（口を閉じた「ン」が残る）／'q'＝ニャ？（短く、語尾が上がる）／'o'＝ニャオ（最後に口をすぼめた「オ」になる）。pitch は声の高さの倍率
 function meow(a, t, p, P){
-  p *= P.pitch || 1; const e = P.end, q = e === 'q', nn = e === 'n', oo = e === 'o', n = 0.11, V = P.vol || 0.075, len = q ? 0.2 : nn ? 0.3 : oo ? 0.4 : 0.36;
+  p *= P.pitch || 1; const e = P.end, q = e === 'q', nn = e === 'n', oo = e === 'o', n = 0.11, V = P.vol || 0.0375, len = q ? 0.2 : nn ? 0.3 : oo ? 0.4 : 0.36;
   const t0 = t + n, tA = t0 + (q ? 0.09 : 0.13), tM = t0 + len * 0.6, tE = t0 + len, tZ = tE + (nn ? 0.17 : 0);
   const o = a.createOscillator(), b1 = a.createBiquadFilter(), b2 = a.createBiquadFilter(), g2 = a.createGain(), g = a.createGain();
   const ramp = (prm, pts, m = 1) => { prm.setValueAtTime(pts[0][1] * m, t); for (const [x, v] of pts.slice(1)) prm.linearRampToValueAtTime(v * m, x); };
