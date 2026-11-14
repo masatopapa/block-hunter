@@ -1890,8 +1890,8 @@ for (const p of [...LATE4, ...PAINTINGS4]) p.from = 4;
 // 何周目から出すか（p.from。指定なしは 名画以外＝1周目、名画＝2周目）
 // 11/11 本人指示「3周目以前の画質が荒くなる絵は4周目以降に」: 48〜56マスだと顔がつぶれる人物の名画7枚と、細かい所がつぶれる自由の女神は4周目（64マス）から
 for (const p of [...LATE3, ...PAINTINGS3]) p.from = 3;
-const FROM4 = new Set(['叫び風', 'モナ・リザ風', '真珠の耳飾りの少女風', '落穂拾い風', '牛乳を注ぐ女風', '接吻風', 'ヴィーナスの誕生風', '自由の女神']);
-for (const p of [...PAINTINGS, ...PAINTINGS3, ...BUILDINGS]) if (FROM4.has(p.name)) p.from = 4;
+const FROM4 = new Set(['叫び風', 'モナ・リザ風', '真珠の耳飾りの少女風', '落穂拾い風', '牛乳を注ぐ女風', '接吻風', 'ヴィーナスの誕生風', '自由の女神', '麗子像風', '踊り子風', '民衆を導く自由の女神風', 'アメリカン・ゴシック風']);   // 後ろの4枚は11/15 追加ぶん（本人指示「人物の名画は4周目から」）
+for (const p of [...PAINTINGS, ...PAINTINGS3, ...BUILDINGS, ...PAINTINGS3B]) if (FROM4.has(p.name)) p.from = 4;
 for (const p of PAINTINGS6) p.from = 6;
 // まさとパパのイラスト（tools/masato_grid.py で作成。お金チャンネルのアイコンの元）。. は空き
 const MASATO_PAL = { k:'#242424', s:'#f9c39a', o:'#e08452', n:'#34528f', w:'#fbf8f1' };
