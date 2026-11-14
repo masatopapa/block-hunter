@@ -1442,6 +1442,141 @@ const PAINTINGS4 = [
      .e(17.6,14,3.1,1.3,COL.lblue).p([[15.6,14.2],[19.6,14.2],[19,17.4],[16.6,17]], COL.lblue).l(17.6,14,18.8,13.6,0.5,COL.black).l(17.6,15,17.6,16.6,0.5,COL.black);
   }}
 ];
+// ---------- 11/15 追加（本人が候補から選択）: 3周目から14種（季節・行事8／お金6） ----------
+const LATE3C = [
+  { name:'鏡もち', bw:24, bh:26, draw(P){
+    P.r(5,19,19,25.4,COL.tan).r(3,17.6,21,19.6,COL.lbrown).c(12,22.6,1.6,COL.brown)   // 三方
+     .r(4.4,16.4,19.6,17.7,COL.red)
+     .e(3.4,15.4,2.8,1.1,COL.green).e(20.6,15.4,2.8,1.1,COL.green)   // うらじろ
+     .e(12,13.2,8.6,4,COL.gray).e(12,13,7.9,3.4,COL.white)
+     .e(12,8.2,6.2,3.3,COL.gray).e(12,8,5.5,2.7,COL.white)
+     .c(12,3.7,2.7,COL.orange).e(13.8,1.3,1.5,0.8,COL.green).l(12,0.5,12,1.4,0.9,COL.dkgreen);   // だいだい
+  }},
+  { name:'だるま', bw:24, bh:26, draw(P){
+    P.e(12,24.6,7.2,1.3,COL.dkred).e(12,13.6,10.8,11.4,COL.red)
+     .e(12,10.4,7,5.8,COL.white)
+     .l(6.6,7.8,10.6,7,1.2,COL.black).l(13.4,7,17.4,7.8,1.2,COL.black)   // まゆ
+     .c(9,10.2,1.4,COL.black).c(15,10.2,1.4,COL.black)
+     .l(8.6,13.8,11.4,12.8,1,COL.black).l(12.6,12.8,15.4,13.8,1,COL.black)   // ひげ
+     .l(4.6,17,7.6,22.4,1.3,COL.yellow).l(19.4,17,16.4,22.4,1.3,COL.yellow)
+     .c(12,20,2.8,COL.yellow).r(11.4,18.2,12.6,21.8,COL.red).l(10.2,20,13.8,20,1.1,COL.red);
+  }},
+  { name:'ししまい', bw:26, bh:24, draw(P){
+    P.p([[1.5,24],[4.5,13],[21.5,13],[24.5,24]], COL.green);   // 唐草もようの布
+    for (const [x, y] of [[6,20.4],[13,21.4],[20,20.4]]) P.c(x, y, 1.7, COL.white).c(x, y, 0.8, COL.green);
+    P.p([[4.4,5],[2.2,0.6],[8,3.2]], COL.red).p([[21.6,5],[23.8,0.6],[18,3.2]], COL.red)   // 耳
+     .p([[5,2.8],[21,2.8],[23.6,9],[21,16.6],[5,16.6],[2.4,9]], COL.red)
+     .l(6,5.6,11,6.8,1.5,COL.yellow).l(20,5.6,15,6.8,1.5,COL.yellow)   // まゆ
+     .c(8.8,8.8,1.7,COL.white).c(8.8,8.8,0.8,COL.black).c(17.2,8.8,1.7,COL.white).c(17.2,8.8,0.8,COL.black)
+     .e(13,10.4,2.6,1.5,COL.dkred).c(12.1,10.6,0.5,COL.black).c(13.9,10.6,0.5,COL.black)
+     .r(6,12.4,20,15.4,COL.black).r(6.8,12.4,19.2,13.7,COL.white);   // 口と歯
+    for (const x of [9.3, 11.8, 14.2, 16.7]) P.l(x, 12.4, x, 13.7, 0.6, COL.black);
+  }},
+  { name:'おにのお面', bw:24, bh:26, draw(P){
+    P.c(1.9,14.4,1.7,COL.red).c(22.1,14.4,1.7,COL.red)
+     .e(12,14.6,10,10.6,COL.red)
+     .e(12,5.6,7.8,3,COL.black).c(5,7.6,2.3,COL.black).c(19,7.6,2.3,COL.black).c(8.4,4.4,2.2,COL.black).c(15.6,4.4,2.2,COL.black)   // かみの毛
+     .p([[6,6.4],[4.8,0.4],[9.6,4.6]], COL.yellow).p([[18,6.4],[19.2,0.4],[14.4,4.6]], COL.yellow)   // つの
+     .l(5.4,10.6,10,12.2,1.5,COL.black).l(18.6,10.6,14,12.2,1.5,COL.black)
+     .c(8.2,14,1.6,COL.white).c(8.5,14.2,0.8,COL.black).c(15.8,14,1.6,COL.white).c(15.5,14.2,0.8,COL.black)
+     .e(12,16.8,1.9,1.4,COL.dkred)
+     .r(6.4,19.4,17.6,22.4,COL.black)
+     .p([[6.8,22.4],[9.2,22.4],[8,19.6]], COL.white).p([[14.8,22.4],[17.2,22.4],[16,19.6]], COL.white);   // きば
+  }},
+  { name:'ひな人形', bw:28, bh:24, draw(P){
+    P.r(3,2,25,17.4,COL.yellow).l(10.4,2,10.4,17,0.7,COL.orange).l(17.6,2,17.6,17,0.7,COL.orange)   // 金びょうぶ
+     .r(0.5,17,27.5,23.6,COL.red).r(0.5,17,27.5,18.5,COL.green)   // ひな壇
+     .p([[3,17],[14,17],[11.6,9.4],[5.4,9.4]], COL.navy).p([[7,9.4],[10,9.4],[8.5,12.2]], COL.white)   // おだいりさま
+     .r(8,12.6,9,15.6,COL.lbrown)
+     .r(7.6,1.8,9.4,4.6,COL.black).c(8.5,6.8,2.6,COL.cream).e(8.5,4.9,2.6,1.3,COL.black)
+     .c(7.6,7.2,0.45,COL.black).c(9.4,7.2,0.45,COL.black)
+     .c(19.5,6.4,3.3,COL.black).r(16.3,6.4,22.7,10.4,COL.black)   // おひなさま（うしろ髪）
+     .p([[13.6,17],[25.4,17],[22.6,9.4],[16.4,9.4]], COL.pink).l(15.2,15.4,23.8,15.4,1.1,COL.red)
+     .p([[17.8,9.4],[21.2,9.4],[19.5,12.6]], COL.red).p([[18.6,9.4],[20.4,9.4],[19.5,11.2]], COL.white)
+     .p([[17.4,15],[21.6,15],[19.5,12.6]], COL.yellow)   // おうぎ
+     .c(19.5,7,2.5,COL.cream).e(19.5,5,2.6,1.2,COL.black)
+     .c(18.6,7.4,0.45,COL.black).c(20.4,7.4,0.45,COL.black)
+     .p([[18.2,3.9],[19.5,1.7],[20.8,3.9]], COL.yellow);
+  }},
+  { name:'七夕のささかざり', noiseMul:0.5, bw:24, bh:28, draw(P){
+    const star = (cx, cy, R) => { const pts = []; for (let i = 0; i < 10; i++){ const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R * 0.45 : R; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } return pts; };
+    P.l(11,6,4.5,3.5,1,COL.green).l(11.4,10,20,6,1,COL.green).l(12,15.5,3.5,12,1,COL.green).l(12.6,20,21,16,1,COL.green);   // 枝
+    for (const [a, b, c, d] of [[4.5,3.5,2,4.8],[6.5,4.2,5,1.6],[20,6,22.6,7],[17.5,7.2,19,4.6],[3.5,12,1.2,13.4],[6,13,4.6,10.4],[21,16,23.2,17.4],[18.5,17.2,20,14.6],[10.5,0.8,8.4,2.4],[10.6,1,12.8,2.2]]) P.l(a, b, c, d, 1.7, COL.green);   // 葉
+    P.l(13.5,27.6,10.5,0.8,1.6,COL.dkgreen)
+     .r(5.2,4.4,7.8,10.4,COL.red).r(14.7,8.4,17.3,14.4,COL.yellow).r(18.4,6.8,21,12.8,COL.pink)   // たんざく
+     .r(4.4,13.2,7,19.2,COL.blue).r(8,14.8,10.6,20.8,COL.pink).r(15,19.2,17.6,25.2,COL.red).r(18.8,17,21.4,23,COL.yellow)   // 色は4色まで（色数が多いと輪郭線の色が取れない）
+     .p(star(19.5, 2.6, 2.5), COL.yellow);
+  }},
+  { name:'ハロウィンのかぼちゃ', bw:26, bh:24, draw(P){
+    P.e(13,15,12.2,8.6,COL.orange)
+     .e(13,15,7.6,8.6,COL.dkorange).e(13,15,6.8,8.6,COL.orange).e(13,15,3,8.6,COL.dkorange).e(13,15,2.2,8.6,COL.orange)   // すじ
+     .p([[5.6,12.4],[10.6,12.4],[8.4,8.6]], COL.black).p([[15.4,12.4],[20.4,12.4],[17.6,8.6]], COL.black)
+     .p([[11.8,15],[14.2,15],[13,13]], COL.black)
+     .p([[5.4,16.4],[20.6,16.4],[18,20.6],[13,21.8],[8,20.6]], COL.black)
+     .r(9,16.4,11,18,COL.orange).r(15,16.4,17,18,COL.orange).r(12,20,14,21.8,COL.orange)   // 歯
+     .e(13,6.6,8.4,1.7,COL.purple).p([[9,6.4],[17,6.4],[14.8,0.3]], COL.purple).r(9.4,4.4,16.6,5.7,COL.yellow);   // まじょのぼうし
+  }},
+  { name:'てるてるぼうず', noiseMul:0.5, bw:22, bh:26, draw(P){
+    for (const [x, y] of [[2.4,4.4],[19.6,3.6],[2.2,12.4],[20,11.4],[17.6,7.6]]) P.c(x, y, 0.9, COL.lblue).p([[x - 0.8, y - 0.3], [x + 0.8, y - 0.3], [x, y - 2]], COL.lblue);   // 雨
+    P.l(11,0.2,11,1.6,1,COL.brown)
+     .p([[7.4,12.4],[14.6,12.4],[20.2,23.4],[17,25.2],[14,23.6],[11,25.2],[8,23.6],[5,25.2],[1.8,23.4]], COL.gray)
+     .p([[8,13],[14,13],[19.2,23.1],[17,24.3],[14,22.8],[11,24.3],[8,22.8],[5,24.3],[2.8,23.1]], COL.white)
+     .c(11,7.6,6.5,COL.gray).c(11,7.6,5.8,COL.white)
+     .r(7.2,12.6,14.8,14,COL.red).c(11,13.3,1.3,COL.red)
+     .c(8.8,7.2,0.85,COL.black).c(13.2,7.2,0.85,COL.black).l(9.4,9.6,11,10.4,0.8,COL.black).l(11,10.4,12.6,9.6,0.8,COL.black)
+     .c(7.2,9.2,1,COL.pink).c(14.8,9.2,1,COL.pink);
+  }},
+  { name:'こばん', bw:26, bh:24, draw(P){
+    P.p([[13,23.6],[0.5,17],[13,10.4],[25.5,17]], COL.purple).p([[13,22],[3.6,17],[13,12],[22.4,17]], DKPURPLE);   // ふくさ
+    for (const [cx, cy] of [[17.4,12.4],[9,10.6]]){ const rx = 6, ry = 10;
+      P.e(cx, cy, rx, ry, COL.orange).e(cx, cy, rx - 0.8, ry - 0.8, COL.yellow);
+      for (let y = cy - 8; y <= cy + 8.01; y += 2){ if (Math.abs(y - cy) < 2.5) continue; const hw = (rx - 0.8) * Math.sqrt(1 - Math.pow((y - cy) / (ry - 0.8), 2)) - 1; P.l(cx - hw, y, cx + hw, y, 0.6, COL.orange); }   // ござ目
+      P.r(cx - 2.2, cy - 1.8, cx + 2.2, cy + 1.8, COL.dkorange).r(cx - 1.3, cy - 0.9, cx + 1.3, cy + 0.9, COL.yellow); }   // 刻印
+  }},
+  { name:'千両箱', bw:28, bh:22, draw(P){
+    for (const [x, y] of [[8,3.8],[14,2.9],[20,3.8]]) P.e(x, y, 3.5, 2.2, COL.orange).e(x, y, 2.8, 1.5, COL.yellow);   // 小判
+    P.r(2,8,26,21.4,COL.brown).r(1,5.4,27,9,COL.dkbrown).r(2,19.8,26,21.4,COL.dkbrown)
+     .r(5,5.4,7.6,21.4,COL.black).r(20.4,5.4,23,21.4,COL.black);   // 鉄のおび
+    for (const [x, y] of [[6.3,11.5],[6.3,16.5],[21.7,11.5],[21.7,16.5]]) P.c(x, y, 0.7, COL.yellow);
+    P.r(11.6,10.4,16.4,15.4,COL.yellow).c(14,12.4,0.9,COL.black).r(13.5,12.4,14.5,14.4,COL.black);   // 錠前
+  }},
+  { name:'まねきねこ', noiseMul:0.5, bw:22, bh:26, draw(P){
+    P.e(11,24.8,10.6,1.2,COL.purple)   // ざぶとん
+     .p([[4.2,6.6],[4.6,1.2],[9.2,4.2]], COL.gray).p([[5.2,5.6],[5.4,2.9],[7.8,4.4]], COL.pink)
+     .p([[17.8,6.6],[17.4,1.2],[12.8,4.2]], COL.gray).p([[16.8,5.6],[16.6,2.9],[14.2,4.4]], COL.pink)
+     .e(11,19,7.6,6.4,COL.gray).e(11,19,6.9,5.7,COL.white)
+     .l(4.8,16.6,3.3,10,3.4,COL.gray).l(4.8,16.6,3.3,10,2.2,COL.white).c(3.2,8.6,2.4,COL.gray).c(3.2,8.6,1.7,COL.white)   // まねく手
+     .e(11,9.6,7.6,6.4,COL.gray).e(11,9.6,6.9,5.7,COL.white)
+     .e(14.6,5.4,2.4,1.4,COL.orange)   // ぶち
+     .c(8,9.2,0.95,COL.black).c(14,9.2,0.95,COL.black).c(11,10.9,0.7,COL.pink)
+     .l(9.6,11.8,11,12.6,0.7,COL.black).l(11,12.6,12.4,11.8,0.7,COL.black)
+     .r(6,14.4,16,15.9,COL.red).c(11,16.3,1.6,COL.yellow).c(11,16.8,0.45,COL.black)   // 首輪とすず
+     .e(15.2,20.2,2.9,4,COL.orange).e(15.2,20.2,2.2,3.3,COL.yellow).l(14,19.2,16.4,19.2,0.6,COL.orange).l(14,21.2,16.4,21.2,0.6,COL.orange);   // 小判
+  }},
+  { name:'打ち出の小づち', bw:26, bh:24, draw(P){
+    for (const [x, y] of [[3.2,18.6],[22.6,18],[6.8,22],[19.6,22.2]]) P.c(x, y, 1.9, COL.orange).c(x, y, 1.2, COL.yellow);   // こぼれた小判
+    P.r(11.8,12,14.2,21.6,COL.brown).c(13,22.2,1.7,COL.red)   // 柄とふさ
+     .e(5,8,2.2,5.2,COL.orange).e(21,8,2.2,5.2,COL.orange).r(5,2.8,21,13.2,COL.yellow)
+     .r(7.6,2.8,9.2,13.2,COL.orange).r(16.8,2.8,18.4,13.2,COL.orange)
+     .c(13,8,2.8,COL.red).c(13,8,1.5,COL.yellow);   // 宝珠のしるし
+  }},
+  { name:'そろばん', bw:28, bh:18, draw(P){
+    P.r(0.5,1,27.5,17,COL.dkbrown).r(1.8,2.3,26.2,15.7,COL.white);
+    for (let i = 0; i < 7; i++){ const x = 3.8 + i * 3.4, d = i + 1; P.l(x, 2.3, x, 15.7, 0.5, COL.dkgray);
+      P.e(x, d >= 5 ? 4.75 : 3.05, 1.5, 0.75, COL.brown);   // 五玉（下がっていれば5）
+      for (let j = 0; j < 4; j++) P.e(x, (j < d % 5 ? 7.25 : 8.95) + j * 2, 1.5, 0.75, COL.brown); }   // 一玉（上がっている数）。左から1〜7
+    P.r(1.8,5.5,26.2,6.5,COL.dkbrown);
+  }},
+  { name:'レジスター', noiseMul:0.5, bw:26, bh:24, draw(P){
+    P.r(20.4,2.4,23.6,9,COL.white).l(21,4,23,4,0.5,COL.dkgray).l(21,5.6,23,5.6,0.5,COL.dkgray)   // レシート
+     .r(12.4,6.6,15.6,8.4,COL.gray).r(7.4,1.2,19.6,7,COL.dkgray).r(8.4,2.2,18.6,6,COL.lblue)   // 表示
+     .r(2,15,24,23.4,COL.gray).r(3.2,18.4,22.8,22.2,COL.dkgray).r(11,19.8,15,20.8,COL.white)   // 本体と引き出し
+     .p([[3.6,15],[22.4,15],[20.4,8],[5.6,8]], COL.dkgray);
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++){ const x = 6.6 + c * 2.2 - (2 - r) * 0.0, y = 9 + r * 2;
+      P.r(x, y, x + 1.5, y + 1.3, c === 5 ? COL.red : c === 4 ? COL.green : COL.white); }   // キー
+  }}
+];
+for (const p of LATE3C) p.from = 3;
 for (const p of [...PAINTINGS, ...PAINTINGS3, ...PAINTINGS4, ...PAINTINGS6]) p.paint = true;
 for (const p of LATE3B) p.from = 3;
 for (const p of [...LATE4, ...PAINTINGS4]) p.from = 4;
@@ -2201,7 +2336,7 @@ function applyDetail(g, W, H, d){
   return g;
 }
 // 1周の並び: 名画以外は「基準サイズでのブロック数が少ない順」、名画（入れる周だけ）は10面から最後まで等間隔（連続しない）
-const ALL_BASE = [...FOODS, ...FRUITS, ...MEALS, ...VEHICLES, ...WORKCARS, ...VEHICLES2, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS, ...MONEY, ...LATE3, ...BUILDINGS, ...ANIMALS2, ...SPACE, ...LATE3B, ...LATE4];
+const ALL_BASE = [...FOODS, ...FRUITS, ...MEALS, ...VEHICLES, ...WORKCARS, ...VEHICLES2, ...APPLIANCES, ...TOOLS, ...ANIMALS, ...INSECTS, ...INSTRUMENTS, ...MONEY, ...LATE3, ...BUILDINGS, ...ANIMALS2, ...SPACE, ...LATE3B, ...LATE4, ...LATE3C];
 const ALL_PAINT = [...PAINTINGS, ...PAINTINGS3, ...PAINTINGS4, ...PAINTINGS6];
 const BASE_N = new Map(ALL_BASE.map(p => [p, blockCount(rasterPic(p, 1).g)]));   // 基準サイズでのブロック数
 // 2周目以降: 単純すぎる絵（基準200ブロック未満）と色数が少ない絵（エアコン・セラミックファンヒーター・れいぞうこ）は出さず、名画は2倍になったここから出す
@@ -2218,7 +2353,7 @@ function buildOrder(lap){   // lap: 何周目か（1〜）。その周までに�
   for (let lv = 1; lv <= total; lv++) out.push((at.has(lv) && pi < paints.length) ? paints[pi++] : (bi < base.length ? base[bi++].p : paints[pi++]));
   return out;
 }
-// 周ごとの並び（7周ぶん。8周目以降は7周目と同じ並びで、大きさの上限だけ9周目まで上がる）: 1周目＝名画以外 / 2周目＝名画が入る / 3周目＝大阪城・恐竜など＋夜のカフェテラス風 / 4〜5周目＝人物の名画・自由の女神 / 6周目〜＝名画風5枚（笛を吹く少年風など）。11/13 追加: 3周目〜＝東京タワーなど13種 / 4周目〜＝五重塔と桜など6種＋名画風2枚
+// 周ごとの並び（7周ぶん。8周目以降は7周目と同じ並びで、大きさの上限だけ9周目まで上がる）: 1周目＝名画以外 / 2周目＝名画が入る / 3周目＝大阪城・恐竜など＋夜のカフェテラス風 / 4〜5周目＝人物の名画・自由の女神 / 6周目〜＝名画風5枚（笛を吹く少年風など）。11/13 追加: 3周目〜＝東京タワーなど13種 / 4周目〜＝五重塔と桜など6種＋名画風2枚。11/15 追加: 3周目〜＝季節・行事8種とお金6種
 const ORDERS = [1, 2, 3, 4, 5, 6, 7].map(buildOrder);
 const cycOrder = cyc => ORDERS[Math.min(cyc, ORDERS.length - 1)];
 const CYCLE1 = ORDERS[0];
