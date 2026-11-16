@@ -3155,7 +3155,9 @@ function makeLevel(lv, seed, dOverride){
   return { lv, seed, name: spec.food.name, W, H, grid: g, stacks, total: blockCount(g), k, limit: spec.limit, detail: spec.detail, tries, valid };
 }
 // ---------- 画面の配置（論理座標） ----------
-const PLATE = { x: 28, y: 76, w: 484, h: 460, pad: 16 };
+// 11/17 本人指示（A'）: 皿を左右に広げ（x 28→10・幅 484→520）、絵は1マスを半端な大きさにして皿いっぱいに描く（それまでは1マスを整数px／4px未満は0.5px刻みにしていたので、80マス以上の絵は幅400px前後で止まり左右が約40pxずつ空いていた）
+const PLATE = { x: 10, y: 76, w: 520, h: 460, pad: 16 };
+const OLD_PLATE_IN = 484 - 16 * 2;   // 変更前の皿の内側の幅。ネコの速さを「変更前と同じマス数／秒」にそろえるのに使う
 const HOLE = { x: 270, y: 598, rx: 36, ry: 20 };
 const SLOT_Y = 636, SLOT_H = 80, SLOT_W = 78;
 const TILE_Y = 748, TILE_H = 70, TILE_W = 78, ROW_GAP = 78, ROWS_SHOWN = 4;
@@ -3185,11 +3187,12 @@ let now = 0, last = 0;
 
 function startLevel(lv, seed){
   L = makeLevel(lv, seed);
-  const fit = Math.min((PLATE.w - PLATE.pad * 2) / L.W, (PLATE.h - PLATE.pad * 2) / L.H);
-  const cs = fit >= 4 ? Math.floor(fit) : Math.floor(fit * 2) / 2;   // 4px未満（114マス〜）は0.5px刻み（11/15）
+  const cs = Math.min((PLATE.w - PLATE.pad * 2) / L.W, (PLATE.h - PLATE.pad * 2) / L.H);   // 皿いっぱい（半端な大きさのまま。描くときに画面の画素へそろえる）
+  const fitOld = Math.min(OLD_PLATE_IN / L.W, (PLATE.h - PLATE.pad * 2) / L.H), csOld = fitOld >= 4 ? Math.floor(fitOld) : Math.floor(fitOld * 2) / 2;   // 変更前の1マス
   const px0 = PLATE.x + Math.round((PLATE.w - cs * L.W) / 2), py0 = PLATE.y + Math.round((PLATE.h - cs * L.H) / 2);
   G = {
     grid: L.grid.slice(), W: L.W, H: L.H, cs, px0, py0, left: L.total,
+    spMul: cs / csOld,   // 絵が大きくなったぶんネコも速く＝クリアまでの時間は変更前と同じ（速さの段階は面ごとに調整済みのため）
     stacks: L.stacks.map(s => s.map(t => ({ col: t.col, n: t.n }))),
     slots: Array.from({ length: NSLOT }, () => null),   // {col,n,tNext,sx,F,dirty,arr}
     reserved: new Uint8Array(L.W * L.H), ants: [], parts: [], flying: [], colOff: new Array(NCOL).fill(0),
@@ -3242,7 +3245,7 @@ function dispatch(s, si){
   const cells = []; for (let j = bi; j >= 0; j = s.F.par[j]) cells.push(j); cells.reverse();
   const path = [[colX(si), SLOT_Y + 6]]; for (const j of cells) path.push(idxPx(s.F, j)); path.push(cellPx(bc, br));
   const back = []; for (let j = cells.length - 1; j >= 0; j--) back.push(idxPx(s.F, cells[j])); back.push([HOLE.x + (rnd() - 0.5) * 20, HOLE.y]);
-  const a = { col: s.col, x: path[0][0], y: path[0][1], path, back, i: 1, st: 0, t: 0, ang: -Math.PI / 2, ph: rnd() * 6.28, c: bc, r: br, sp: SPD * walkMul(L.lv) * (0.9 + rnd() * 0.25) };
+  const a = { col: s.col, x: path[0][0], y: path[0][1], path, back, i: 1, st: 0, t: 0, ang: -Math.PI / 2, ph: rnd() * 6.28, c: bc, r: br, sp: SPD * walkMul(L.lv) * G.spMul * (0.9 + rnd() * 0.25) };
   G.ants.push(a); return true;
 }
 
@@ -3452,13 +3455,15 @@ function drawBoard(){
   if (!bc){ bc = document.createElement('canvas'); bcx = bc.getContext('2d'); }
   if (boardDirty){ bc.width = PLATE.w * DPR; bc.height = PLATE.h * DPR; bcx.setTransform(DPR, 0, 0, DPR, 0, 0); bcx.clearRect(0, 0, PLATE.w, PLATE.h);
     const ox = G.px0 - PLATE.x, oy = G.py0 - PLATE.y;
+    // 1マスは半端な大きさ（11/17〜）なので、マスの端を画面の画素にそろえて描く（にじまない。マスの幅は画素1つぶん違うことがある）。すき間・縁の太さも画素の整数倍
+    const q = v => Math.round(v * DPR) / DPR, g1 = Math.max(1, Math.round(DPR)) / DPR;
     for (let r = 0; r < G.H; r++) for (let c = 0; c < G.W; c++){ const v = G.grid[r * G.W + c]; if (!v) continue; const col = COL[v] || v;
-      const x = ox + c * cs, y = oy + r * cs, s = cs - 1;
-      if (cs < 4){ const q = v => Math.round(v * DPR) / DPR, x1 = q(x), y1 = q(y); bcx.fillStyle = col; bcx.fillRect(x1, y1, q(x + cs) - x1 - 1 / DPR, q(y + cs) - y1 - 1 / DPR); continue; }   // 3.5px（114マス）・3px（133マス）は端を画面の画素に合わせ、すき間は画素1つぶん（1pxあけると色が半分以下になって白っぽい。11/15）
-      if (cs <= 4){ bcx.fillStyle = col; bcx.fillRect(x, y, s, s); continue; }   // 1マス4px（100マス）は右下の濃い縁を省く＝色が2×2pxしか残らず、すき間と縁で全体が白っぽく・薄い色どうしが見分けにくくなったため（11/9）
-      bcx.fillStyle = shade(col, 0.7); bcx.fillRect(x, y, s, s);
-      bcx.fillStyle = col; bcx.fillRect(x, y, s - 1, s - 1);
-      if (cs >= 6){ bcx.fillStyle = 'rgba(255,255,255,.35)'; bcx.fillRect(x, y, s - 1, 1); bcx.fillRect(x, y, 1, s - 1); } }   // 1マス5px（80マス）・4px（100マス）は光の線を省く＝線の割合が増えて色が白っぽくなるため
+      const x = q(ox + c * cs), y = q(oy + r * cs), w = q(ox + (c + 1) * cs) - x, h = q(oy + (r + 1) * cs) - y;
+      if (cs < 4){ bcx.fillStyle = col; bcx.fillRect(x, y, w - 1 / DPR, h - 1 / DPR); continue; }   // 4px未満（114・133マス）はすき間を画素1つぶん（1pxあけると色が半分以下になって白っぽい。11/15）
+      if (cs < 5){ bcx.fillStyle = col; bcx.fillRect(x, y, w - g1, h - g1); continue; }   // 5px未満（100マスなど）は右下の濃い縁を省く＝色が2×2pxしか残らず、すき間と縁で全体が白っぽく・薄い色どうしが見分けにくくなったため（11/9）
+      bcx.fillStyle = shade(col, 0.7); bcx.fillRect(x, y, w - g1, h - g1);
+      bcx.fillStyle = col; bcx.fillRect(x, y, w - 2 * g1, h - 2 * g1);
+      if (cs >= 6){ bcx.fillStyle = 'rgba(255,255,255,.35)'; bcx.fillRect(x, y, w - 2 * g1, g1); bcx.fillRect(x, y, g1, h - 2 * g1); } }   // 6px未満（80マスなど）は光の線を省く＝線の割合が増えて色が白っぽくなるため
     boardDirty = false; }
   ctx.drawImage(bc, PLATE.x, PLATE.y, PLATE.w, PLATE.h);
 }
