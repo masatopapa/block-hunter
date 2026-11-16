@@ -2146,6 +2146,9 @@ for (const p of [...LATE3, ...PAINTINGS3]) p.from = 3;
 const FROM4 = new Set(['叫び風', 'モナ・リザ風', '真珠の耳飾りの少女風', '落穂拾い風', '牛乳を注ぐ女風', '接吻風', 'ヴィーナスの誕生風', '自由の女神', '麗子像風', '踊り子風', '民衆を導く自由の女神風', 'アメリカン・ゴシック風']);   // 後ろの4枚は11/15 追加ぶん（本人指示「人物の名画は4周目から」）
 for (const p of [...PAINTINGS, ...PAINTINGS3, ...BUILDINGS, ...PAINTINGS3B]) if (FROM4.has(p.name)) p.from = 4;
 for (const p of PAINTINGS6) p.from = 6;
+// 11/17 本人指示「4周目以降に出る名画のうち、画質が荒いものから5つを5周目以降に」: 64マスで顔・人物がいちばんつぶれる5枚（横長で人物が小さい落穂拾い・ヴィーナス、顔の小さい見返り美人・民衆を導く・叫び）は5周目（70マス）から
+const FROM5 = new Set(['落穂拾い風', 'ヴィーナスの誕生風', '見返り美人図風', '民衆を導く自由の女神風', '叫び風']);
+for (const p of [...PAINTINGS, ...PAINTINGS3, ...PAINTINGS3B, ...PAINTINGS4]) if (FROM5.has(p.name)) p.from = 5;
 // まさとパパのイラスト（tools/masato_grid.py で作成。お金チャンネルのアイコンの元）。. は空き
 const MASATO_PAL = { k:'#242424', s:'#f9c39a', o:'#e08452', n:'#34528f', w:'#fbf8f1' };
 const MASATO_GRIDS = {
@@ -2903,24 +2906,37 @@ const BASE_N = new Map(ALL_BASE.map(p => [p, blockCount(rasterPic(p, 1).g)]));  
 // ※色数の少ない絵は名前で固定（10/27まで「追加色込み5以下」を計算していたが、陰影の色の作り方を変えると2周目の並びが変わってしまうため）
 const FEW_COLORS = new Set(['エアコン', 'セラミックファンヒーター', 'れいぞうこ']);
 const CYC2_FILTER = p => BASE_N.get(p) >= 200 && !FEW_COLORS.has(p.name);
-function buildOrder(lap){   // lap: 何周目か（1〜）。その周までに出はじめる絵（p.from）だけを並べる。1周目は名画なし
-  const base = ALL_BASE.filter(p => (p.from || 1) <= lap && (lap === 1 || CYC2_FILTER(p))).map(p => ({ p, n: BASE_N.get(p) }));
+// 3周目からは絵を2組に分けて、奇数周（3・5・7・9…）と偶数周（4・6・8…）に交互に出す＝同じ絵が続けて2つの周に出ない（11/17 本人指示）
+// 組の分け方: 3周目までに出はじめる絵は、名画以外を基準ブロック数の順に1枚おき・名画を ALL_PAINT の順に1枚おき（どちらの組も大きさの分布がそろう）。
+// 4周目以降に出はじめる絵は、出はじめる周の組（4・6周目から＝偶数周、5周目から＝奇数周）。1〜2周目は今までどおり
+const ALT_FROM = 3;
+const fromLap = p => p.from || (p.paint ? 2 : 1);
+const ALT_GROUP = new Map();   // 絵 → 0＝奇数周の組 / 1＝偶数周の組
+ALL_BASE.filter(p => fromLap(p) <= ALT_FROM && CYC2_FILTER(p)).sort((a, b) => BASE_N.get(a) - BASE_N.get(b)).forEach((p, i) => ALT_GROUP.set(p, i % 2));
+ALL_PAINT.filter(p => fromLap(p) <= ALT_FROM).forEach((p, i) => ALT_GROUP.set(p, i % 2));
+for (const p of [...ALL_BASE, ...ALL_PAINT]) if (fromLap(p) > ALT_FROM) ALT_GROUP.set(p, (fromLap(p) - ALT_FROM) % 2);
+const inLap = (p, lap) => fromLap(p) <= lap && (lap < ALT_FROM || ALT_GROUP.get(p) === (lap - ALT_FROM) % 2);
+function buildOrder(lap){   // lap: 何周目か（1〜）。その周までに出はじめる絵（p.from）のうち、その周の組の絵だけを並べる。1周目は名画なし
+  const base = ALL_BASE.filter(p => inLap(p, lap) && (lap === 1 || CYC2_FILTER(p))).map(p => ({ p, n: BASE_N.get(p) }));
   base.sort((a, b) => a.n - b.n);
-  const paints = lap >= 2 ? ALL_PAINT.filter(p => (p.from || 2) <= lap) : [];
+  const paints = lap >= 2 ? ALL_PAINT.filter(p => inLap(p, lap)) : [];
   const total = base.length + paints.length, first = Math.min(10, total), last = total;
   const at = new Set(paints.map((p, i) => first + Math.round(i * (last - first) / Math.max(1, paints.length - 1))));
   const out = []; let pi = 0, bi = 0;
   for (let lv = 1; lv <= total; lv++) out.push((at.has(lv) && pi < paints.length) ? paints[pi++] : (bi < base.length ? base[bi++].p : paints[pi++]));
   return out;
 }
-// 周ごとの並び（7周ぶん。8周目以降は7周目と同じ並びで、大きさの上限だけ9周目まで上がる）: 1周目＝名画以外 / 2周目＝名画が入る / 3周目＝大阪城・恐竜など＋夜のカフェテラス風 / 4〜5周目＝人物の名画・自由の女神 / 6周目〜＝名画風5枚（笛を吹く少年風など）。11/13 追加: 3周目〜＝東京タワーなど13種 / 4周目〜＝五重塔と桜など6種＋名画風2枚。11/15 追加: 3周目〜＝季節・行事8種とお金6種、どうぶつ13種・建物5種・名画風6枚 / 5周目〜＝万里の長城と名画風3枚（最後の晩餐風など）。同日その3: 3周目〜＝スポーツ・あそび9種・楽器4種・掃除機・名所6種・名画風6枚
-const ORDERS = [1, 2, 3, 4, 5, 6, 7].map(buildOrder);
-const cycOrder = cyc => ORDERS[Math.min(cyc, ORDERS.length - 1)];
+// 周ごとの並び（11/17〜 3周目からは奇数周と偶数周で別の組の絵。8周目以降は6周目・7周目の並びを交互にくり返し、大きさの上限だけ9周目まで上がる）:1周目＝名画以外 / 2周目＝名画が入る / 3周目＝大阪城・恐竜など＋夜のカフェテラス風 / 4〜5周目＝人物の名画・自由の女神 / 6周目〜＝名画風5枚（笛を吹く少年風など）。11/13 追加: 3周目〜＝東京タワーなど13種 / 4周目〜＝五重塔と桜など6種＋名画風2枚。11/15 追加: 3周目〜＝季節・行事8種とお金6種、どうぶつ13種・建物5種・名画風6枚 / 5周目〜＝万里の長城と名画風3枚（最後の晩餐風など）。同日その3: 3周目〜＝スポーツ・あそび9種・楽器4種・掃除機・名所6種・名画風6枚
+// 11/17〜: 3周目から奇数周・偶数周で絵を分けたので、最後に出はじめる絵（今は6周目）の次の周まで作り、そのあとは最後の2周（偶数周・奇数周）を交互にくり返す
+const ORDER_LAPS = Math.max(ALT_FROM + 2, ...[...ALL_BASE, ...ALL_PAINT].map(fromLap)) + 1;
+const ORDERS = Array.from({ length: ORDER_LAPS }, (_, i) => buildOrder(i + 1));
+const cycOrder = cyc => cyc < ORDERS.length ? ORDERS[cyc] : ORDERS[ORDERS.length - 2 + (cyc - ORDERS.length) % 2];
 const CYCLE1 = ORDERS[0];
 let PIC_OVERRIDE = null;   // 動作確認用（?pic=名前）
 function levelPos(lv){ // レベル → 周・周内の位置・その周の並び
-  let r = lv - 1, c = 0; while (c < ORDERS.length - 1 && r >= ORDERS[c].length){ r -= ORDERS[c].length; c++; }
-  const order = ORDERS[c]; return { cyc: c + Math.floor(r / order.length), idx: r % order.length, order };
+  let r = lv - 1, c = 0; while (c < ORDERS.length && r >= ORDERS[c].length){ r -= ORDERS[c].length; c++; }
+  if (c >= ORDERS.length){ const P = cycOrder(c).length + cycOrder(c + 1).length; c += 2 * Math.floor(r / P); r %= P; while (r >= cycOrder(c).length){ r -= cycOrder(c).length; c++; } }
+  return { cyc: c, idx: r, order: cycOrder(c) };
 }
 const limitCache = new Map();
 function nextPaintingLimit(pos){ // 次に出る名画のブロック数（名画以外はこれより少なくする）。周内に無ければ次の周の最初の名画
@@ -2940,8 +2956,10 @@ const baseMult = cyc => cyc === 0 ? 1 : 2 * maxDim(cyc) / 48;
 // 50面ごとの「まさとパパ」は1面追加（10/28 本人指示「本来の面に1つ追加で、本来の面は次に出す」）＝50面がまさとパパ、51面が元の50面。以降の絵・難しさは「追加分を除いた番号」で決める
 const isMasatoLv = lv => lv % MASATO_EVERY === 0;
 const seqLv = lv => lv - Math.floor(lv / MASATO_EVERY);   // まさとパパの面自体は直前の面と同じ周・大きさ
-// まったく同じ条件（絵の並び・大きさの上限・複雑さ）のくり返しが始まる面＝上限が頭打ちになる周（今は9周目）の次の周の最初の面。絵や CYC_DIM を変えると自動で変わる（11/2 本人依頼でタイトル画面に表示）
-const LOOP_LV = (() => { let s = 1; for (let c = 0; c < Math.max(CYC_DIM.length, ORDERS.length); c++) s += cycOrder(c).length; let lv = s; while (seqLv(lv) < s || isMasatoLv(lv)) lv++; return lv; })();
+// まったく同じ条件（絵の並び・大きさの上限・複雑さ）のくり返しが始まる面。絵や CYC_DIM を変えると自動で変わる（11/2 本人依頼でタイトル画面に表示）
+// 11/17〜 奇数周・偶数周で絵が違うので「2つ前の周と同じ」になる最初の周＝並びが2周ごとのくり返しに入り（今は8周目〜）、かつ上限が頭打ちの周（今は9周目）の2つ後（今は11周目＝9周目と同じ）
+const LOOP_CYC = Math.max(ORDERS.length, CYC_DIM.length + 1);
+const LOOP_LV = (() => { let s = 1; for (let c = 0; c < LOOP_CYC; c++) s += cycOrder(c).length; let lv = s; while (seqLv(lv) < s || isMasatoLv(lv)) lv++; return lv; })();
 function levelSpec(lv0){
   const lv = seqLv(lv0);
   const pos = levelPos(lv), { cyc, idx } = pos; const food = PIC_OVERRIDE || pos.order[idx]; const inLv = idx + 1;
