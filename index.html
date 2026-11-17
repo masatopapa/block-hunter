@@ -4101,17 +4101,20 @@ function showClear(){
   saveBest(L.lv + 1);   // クリアした時点で次の面まで進めておく（10/27 本人指摘「クリア後タイトルに戻ると同じ面から始まる」）
   const cele50 = L.lv % MASATO_EVERY === 0;   // 50面ごと（まさとパパの面）は豪華に（11/2 本人依頼）: 金色のカード・王冠・花火・紙吹雪3倍・長いファンファーレ
   const cele = cele50 || L.lv % 10 === 0;   // 10面クリアごとにお祝い（紙吹雪・ファンファーレ・「おめでとう！」）。10/28 本人依頼
+  const celeKiju = isKijuLv(L.lv);   // 喜寿の女性の面（11/18 本人依頼）: ふつうのクリア画面の上に「おめでとう！」＋50面ごとと同じくらいの演出（金色のカード・花火・紙吹雪3倍・長いファンファーレ。王冠と「とうたつ」は出さない）
   const btns = `<button class="btn go" id="bNext">つぎのレベルへ</button><button class="btn sub" id="bTitle">タイトルへ</button>`;
   const cele1000 = L.lv % 1000 === 0;   // 1000面クリア（11/13 本人依頼）: 50面ごとより更に豪華に＝にじ色に光るカード・花火3回・紙吹雪を12秒・約10.5秒のファンファーレ
   showOv(cele1000
     ? `<div class="crown">🏆👑🏆</div><h2 class="omedeto legend">でんせつのハンター！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p><span class="gold">✨ ${L.lv}レベル とうたつ ✨</span><p class="thanks">ここまで あそんでくれて ありがとう！</p>${btns}`
     : cele50
     ? `<div class="crown">👑</div><h2 class="omedeto big">だいせいこう！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p><span class="gold">✨ ${L.lv}レベル とうたつ ✨</span>${btns}`
+    : celeKiju
+    ? `<div class="ants">🎉🐱🎉</div><h2 class="omedeto big">おめでとう！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>${btns}`
     : cele
     ? `<div class="medal">🏆</div><h2 class="omedeto">おめでとう！</h2><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>${btns}`
     : `<div class="ants">🎉🐱🎉</div><h2>レベル ${L.lv} クリア！</h2><p>${L.name}を食べ尽くした（${L.total}ブロック・壺${G.sent}個）</p>${btns}`);
   if (cele1000){ card.classList.add('cele', 'cele50', 'cele1000'); confetti(700, true, 12); fireworks(8); later(() => fireworks(8), 4300); later(() => fireworks(10), 8300); later(fanfare1000, 400); }   // 花火は最後の「ジャーン」に3回目を合わせる
-  else if (cele50){ card.classList.add('cele', 'cele50'); confetti(260, true); fireworks(8); setTimeout(fanfare50, 400); }
+  else if (cele50 || celeKiju){ card.classList.add('cele', 'cele50'); confetti(260, true); fireworks(8); setTimeout(fanfare50, 400); }
   else if (cele){ card.classList.add('cele'); confetti(); setTimeout(fanfare, 450); }
   document.getElementById('bNext').onclick = () => startLevel(L.lv + 1, Date.now() & 0xffffff);
   document.getElementById('bTitle').onclick = showTitle;
