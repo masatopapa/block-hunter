@@ -41,6 +41,8 @@ body{font-family:var(--font-disp);color:var(--paper);-webkit-user-select:none;us
 .cpl{font-size:16px;font-weight:700;color:#7b6248}
 .cp{flex:0 0 calc((100% - 16px) / 3);box-sizing:border-box;padding:10px 0;text-align:center;border-radius:12px;border:2px solid #c08a4d;background:#fffaf0;color:#5a3b22;font-family:var(--font-disp);font-weight:900;font-size:17px;line-height:1;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;box-shadow:0 3px 0 #c08a4d}
 .cp:active{transform:translateY(2px);box-shadow:0 1px 0 #c08a4d}
+.cp.kj{border-color:#c2334a;background:#fff0f2;color:#96202f;box-shadow:0 3px 0 #c2334a}   /* 喜寿の女性の面からやり直すボタン */
+.cp.kj:active{box-shadow:0 1px 0 #c2334a}
 .cp:focus-visible{outline:3px solid #f08a12;outline-offset:2px}
 .help{text-align:left;font-size:17px;line-height:1.55;margin:12px 0 0;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.55);color:#4a3523}
 .help b{color:#c2410c}
@@ -4060,8 +4062,12 @@ function showTitle(){
   if (updatePending){ location.reload(); return; }   // 新しい版があればタイトルに戻るときに読み込み直す（到達レベルは保存済み）
   mode = 'title';
   // 10面ごとのチェックポイント（1・11・21…のうち到達した分）からやり直せる。201面に達したら101面以降を20面ごと（101・121・141…）＝ボタンが増えすぎてカードが画面からはみ出すため（11/2 本人指示）
-  const cps = []; for (let lv = 1; lv <= bestLv; lv += bestLv >= 201 && lv >= 101 ? 20 : 10) cps.push(lv);
-  const cpHtml = bestLv > 1 ? `<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
+  // 777面をクリアしたら、クリア済みの喜寿の女性の面（777・877…）からやり直すボタンを出し、ボタンが増えるぶん101面以降を50面ごと（101・151・201…）にする（11/18 本人指示）
+  const kjs = []; for (let lv = KIJU_FROM; lv < bestLv; lv += KIJU_EVERY) kjs.push(lv);
+  const cpStep = kjs.length ? 50 : bestLv >= 201 ? 20 : 10;
+  const cps = []; for (let lv = 1; lv <= bestLv; lv += lv >= 101 ? cpStep : 10) cps.push(lv);
+  const kjHtml = kjs.length ? `<div class="cps"><span class="cpl" style="flex-basis:100%">喜寿の女性をやり直す:</span>${kjs.map(lv => `<button class="cp kj" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
+  const cpHtml = bestLv > 1 ? `${kjHtml}<div class="cps"><span class="cpl">やり直す:</span>${cps.map(lv => `<button class="cp" data-lv="${lv}">レベル${lv}</button>`).join('')}</div>` : '';
   const loopHtml = bestLv >= LOOP_LV ? `<p class="loop">${LOOP_LV}面以降は繰り返しになります</p>` : '';   // くり返しの面まで来た人にだけ出す
   showOv(`<div class="ants">🐱🐱🐱</div><h1>ブロックハンター</h1><p class="lead">色ごとのネコを送って、ドット絵の<br>食べ物・乗り物・家電・名画を食べ尽くそう！</p>
     <button class="btn go" id="bCont">レベル ${bestLv} から${bestLv > 1 ? 'つづける' : 'はじめる'}</button>${cpHtml}${loopHtml}<button class="btn sub" id="bHelp">あそびかた</button>${inFrame ? '' : '<button class="btn sub" id="bHome">ホーム画面に追加する方法</button>'}
